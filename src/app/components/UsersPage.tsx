@@ -586,7 +586,11 @@ function RecentUserActivity() {
   );
 }
 
-export function UsersPage() {
+interface UsersPageProps {
+  onMenuClick?: () => void;
+}
+
+export function UsersPage({ onMenuClick }: UsersPageProps) {
   const [selectedUser, setSelectedUser] = useState<AppUser | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [search, setSearch] = useState("");
@@ -617,7 +621,7 @@ export function UsersPage() {
         overflowY: "auto",
       }}
     >
-      <TopNav title="User Management" subtitle="Roles, Access & Team Members" />
+      <TopNav title="User Management" subtitle="Roles, Access & Team Members" onMenuClick={onMenuClick} />
 
       <main
         style={{
@@ -803,13 +807,7 @@ export function UsersPage() {
         </div>
 
         {/* ── User Summary Cards ── */}
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(4, minmax(0,1fr))",
-            gap: "18px",
-          }}
-        >
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-[18px]">
           {summaryCards.map((card) => {
             const Icon = card.icon;
             return (
@@ -898,15 +896,11 @@ export function UsersPage() {
         >
           {/* Card header */}
           <div
+            className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 p-5 md:p-[22px_28px]"
             style={{
-              padding: "22px 28px",
               borderBottom: "1px solid rgba(17,24,39,0.07)",
               background:
                 "radial-gradient(circle at 100% 0%, rgba(249,115,22,0.06), transparent 16rem), linear-gradient(180deg, rgba(255,255,255,0.96), rgba(255,255,255,0.72))",
-              display: "flex",
-              alignItems: "flex-start",
-              justifyContent: "space-between",
-              gap: "16px",
             }}
           >
             <div>
@@ -1086,6 +1080,8 @@ export function UsersPage() {
             </div>
           </div>
 
+          <div className="overflow-x-auto w-full pb-2">
+            <div className="min-w-[800px]">
           {/* Table header */}
           <div
             style={{
@@ -1164,17 +1160,12 @@ export function UsersPage() {
               ))
             )}
           </div>
+            </div>
+          </div>
         </div>
 
         {/* ── Permissions Overview + Recent Activity ── */}
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "1.1fr 1fr",
-            gap: "24px",
-            alignItems: "start",
-          }}
-        >
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
           <PermissionsOverview />
           <RecentUserActivity />
         </div>

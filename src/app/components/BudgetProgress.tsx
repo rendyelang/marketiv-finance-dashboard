@@ -134,7 +134,9 @@ export function BudgetProgress() {
       </div>
 
       {/* Column headers */}
-      <div
+      <div className="overflow-x-auto w-full pb-4">
+        <div className="min-w-[800px]">
+          <div
         style={{
           display: "grid",
           gridTemplateColumns: "1.4fr 1fr 1fr 1fr 1.6fr 100px",
@@ -445,6 +447,8 @@ export function BudgetProgress() {
           />
           Overall
         </div>
+      </div>
+      </div>
       </div>
     </div>
   );

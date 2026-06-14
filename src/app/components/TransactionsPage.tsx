@@ -389,8 +389,11 @@ function TransactionRow({
     </div>
   );
 }
+interface TransactionsPageProps {
+  onMenuClick?: () => void;
+}
 
-export function TransactionsPage() {
+export function TransactionsPage({ onMenuClick }: TransactionsPageProps) {
   const [selectedTxn, setSelectedTxn] = useState<Transaction | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [search, setSearch] = useState("");
@@ -428,7 +431,7 @@ export function TransactionsPage() {
         overflowY: "auto",
       }}
     >
-      <TopNav title="Transactions" subtitle="Financial Records & Transaction Management" />
+      <TopNav title="Transactions" subtitle="Financial Records & Transaction Management" onMenuClick={onMenuClick} />
 
       <main
         style={{
@@ -440,13 +443,7 @@ export function TransactionsPage() {
         }}
       >
         {/* Summary KPI cards */}
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(4, minmax(0,1fr))",
-            gap: "18px",
-          }}
-        >
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-[18px]">
           {summaryCards.map((card, i) => {
             const Icon = card.icon;
             return (
@@ -535,15 +532,11 @@ export function TransactionsPage() {
         >
           {/* Card header */}
           <div
+            className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 p-5 md:p-[22px_28px]"
             style={{
-              padding: "22px 28px",
               borderBottom: "1px solid rgba(17,24,39,0.07)",
               background:
                 "radial-gradient(circle at 100% 0%, rgba(249,115,22,0.06), transparent 16rem), linear-gradient(180deg, rgba(255,255,255,0.96), rgba(255,255,255,0.72))",
-              display: "flex",
-              alignItems: "flex-start",
-              justifyContent: "space-between",
-              gap: "16px",
             }}
           >
             <div>
@@ -770,6 +763,8 @@ export function TransactionsPage() {
             </div>
           </div>
 
+          <div className="overflow-x-auto w-full pb-2">
+            <div className="min-w-[1000px]">
           {/* Table header */}
           <div
             style={{
@@ -933,6 +928,8 @@ export function TransactionsPage() {
               </div>
             </div>
           )}
+            </div>
+          </div>
         </div>
       </main>
 

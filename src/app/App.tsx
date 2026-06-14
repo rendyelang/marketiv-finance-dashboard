@@ -7,47 +7,44 @@ import { UsersPage } from "./components/UsersPage";
 
 export default function App() {
   const [activePage, setActivePage] = useState<PageId>("dashboard");
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
   return (
-    <div
-      style={{
-        display: "flex",
-        minHeight: "100vh",
-        background: "#fbf7ef",
-        fontFamily: "'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif",
-        color: "#182033",
-        position: "relative",
-      }}
-    >
+    <div className="flex min-h-screen bg-[#fbf7ef] text-[#182033] relative font-['Plus_Jakarta_Sans',ui-sans-serif,system-ui,sans-serif]">
       {/* Ambient background */}
       <div
+        className="fixed inset-0 z-0 pointer-events-none"
         style={{
-          position: "fixed",
-          inset: 0,
-          zIndex: 0,
-          pointerEvents: "none",
           background:
             "radial-gradient(circle at 72% 8%, rgba(249,115,22,0.07), transparent 32rem), radial-gradient(circle at 10% 82%, rgba(30,58,95,0.06), transparent 28rem)",
         }}
       />
 
-      {/* Sidebar */}
-      <Sidebar activePage={activePage} onNavigate={setActivePage} />
+      {/* Mobile overlay */}
+      {isMobileSidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-slate-900/40 z-40 lg:hidden backdrop-blur-sm transition-opacity"
+          onClick={() => setIsMobileSidebarOpen(false)}
+        />
+      )}
 
-      {/* Page content */}
-      <div
-        style={{
-          flex: 1,
-          display: "flex",
-          minWidth: 0,
-          position: "relative",
-          zIndex: 1,
+      {/* Sidebar */}
+      <Sidebar 
+        activePage={activePage} 
+        onNavigate={(page) => {
+          setActivePage(page);
+          setIsMobileSidebarOpen(false); // auto-close on navigate on mobile
         }}
-      >
-        {activePage === "dashboard" && <DashboardPage />}
-        {activePage === "transactions" && <TransactionsPage />}
-        {activePage === "rab" && <RABPage />}
-        {activePage === "users" && <UsersPage />}
+        isOpen={isMobileSidebarOpen}
+        onClose={() => setIsMobileSidebarOpen(false)}
+      />
+
+      {/* Page content wrapper */}
+      <div className="flex-1 flex min-w-0 relative z-10 w-full">
+        {activePage === "dashboard" && <DashboardPage onMenuClick={() => setIsMobileSidebarOpen(true)} />}
+        {activePage === "transactions" && <TransactionsPage onMenuClick={() => setIsMobileSidebarOpen(true)} />}
+        {activePage === "rab" && <RABPage onMenuClick={() => setIsMobileSidebarOpen(true)} />}
+        {activePage === "users" && <UsersPage onMenuClick={() => setIsMobileSidebarOpen(true)} />}
 
         {/* Placeholder for pages not yet built */}
         {activePage !== "dashboard" &&

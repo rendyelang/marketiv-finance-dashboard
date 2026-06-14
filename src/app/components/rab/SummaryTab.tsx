@@ -200,13 +200,7 @@ export function SummaryTab() {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
       {/* KPI Cards */}
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(4, minmax(0,1fr))",
-          gap: "18px",
-        }}
-      >
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-[18px]">
         {kpiCards.map((card, i) => {
           const Icon = card.icon;
           const isHov = hoveredCard === i;
@@ -322,14 +316,7 @@ export function SummaryTab() {
 
       {/* Category cards grid */}
       <div>
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            marginBottom: "16px",
-          }}
-        >
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
           <div>
             <div
               style={{
@@ -381,13 +368,7 @@ export function SummaryTab() {
           </div>
         </div>
 
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(5, minmax(0,1fr))",
-            gap: "16px",
-          }}
-        >
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
           {rabCategories.map((cat) => {
             const realization = getCategoryRealization(cat);
             const remaining = getCategoryRemaining(cat);

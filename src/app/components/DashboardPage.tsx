@@ -5,32 +5,20 @@ import { RecentActivity } from "./RecentActivity";
 import { BudgetAlerts } from "./BudgetAlerts";
 import { BudgetProgress } from "./BudgetProgress";
 
-export function DashboardPage() {
+interface DashboardPageProps {
+  onMenuClick?: () => void;
+}
+
+export function DashboardPage({ onMenuClick }: DashboardPageProps) {
   return (
-    <div
-      style={{
-        flex: 1,
-        display: "flex",
-        flexDirection: "column",
-        minWidth: 0,
-        maxHeight: "100vh",
-        overflowY: "auto",
-      }}
-    >
+    <div className="flex-1 flex flex-col min-w-0 max-h-screen overflow-y-auto">
       <TopNav
         title="Financial Dashboard"
         subtitle="Marketiv P2MW Funding Overview"
+        onMenuClick={onMenuClick}
       />
 
-      <main
-        style={{
-          flex: 1,
-          padding: "28px 32px 40px",
-          display: "flex",
-          flexDirection: "column",
-          gap: "24px",
-        }}
-      >
+      <main className="flex-1 p-4 md:p-6 lg:px-8 lg:py-7 flex flex-col gap-6">
         {/* Section label */}
         <div
           style={{
@@ -86,14 +74,7 @@ export function DashboardPage() {
 
         <KPICards />
 
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "1.15fr 1fr",
-            gap: "24px",
-            alignItems: "stretch",
-          }}
-        >
+        <div className="grid grid-cols-1 lg:grid-cols-[1.15fr_1fr] gap-6 items-stretch">
           <BudgetDistribution />
           <RecentActivity />
         </div>

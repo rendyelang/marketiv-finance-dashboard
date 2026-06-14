@@ -33,7 +33,7 @@ const alerts = [
 
 export function BudgetAlerts() {
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0,1fr))", gap: "20px" }}>
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
       {alerts.map((alert, i) => (
         <div
           key={i}

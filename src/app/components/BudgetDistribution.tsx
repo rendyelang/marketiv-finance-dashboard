@@ -118,9 +118,9 @@ export function BudgetDistribution() {
       </div>
 
       {/* Chart + Legend */}
-      <div style={{ display: "flex", alignItems: "center", gap: "28px" }}>
+      <div className="flex flex-col xl:flex-row items-center gap-7">
         {/* Donut */}
-        <div style={{ width: "220px", height: "220px", flexShrink: 0 }}>
+        <div className="w-[220px] h-[220px] shrink-0">
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Pie
@@ -144,7 +144,7 @@ export function BudgetDistribution() {
         </div>
 
         {/* Legend */}
-        <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "10px" }}>
+        <div className="flex-1 flex flex-col gap-2.5 w-full">
           {data.map((item) => (
             <div
               key={item.name}

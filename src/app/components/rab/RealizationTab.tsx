@@ -159,13 +159,7 @@ export function RealizationTab() {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
       {/* Top summary strip */}
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(4, minmax(0,1fr))",
-          gap: "16px",
-        }}
-      >
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
         {[
           {
             label: "Total Budget",
@@ -300,15 +294,7 @@ export function RealizationTab() {
           boxShadow: "0 18px 46px rgba(15,23,42,0.10)",
         }}
       >
-        <div
-          style={{
-            display: "flex",
-            alignItems: "flex-start",
-            justifyContent: "space-between",
-            gap: "16px",
-            marginBottom: "28px",
-          }}
-        >
+        <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-4 mb-7">
           <div>
             <div
               style={{
@@ -349,7 +335,7 @@ export function RealizationTab() {
               Actual spending against planned allocation — stacked view
             </div>
           </div>
-          <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
+          <div className="flex flex-wrap lg:flex-nowrap gap-3 items-center">
             {[
               { color: "rgba(249,115,22,0.15)", label: "Remaining Budget", border: "rgba(249,115,22,0.22)" },
               { color: "#f97316", label: "Realized", border: "transparent" },
@@ -527,6 +513,8 @@ export function RealizationTab() {
           </div>
         </div>
 
+        <div className="overflow-x-auto w-full pb-2">
+          <div className="min-w-[900px]">
         {/* Column headers */}
         <div
           style={{
@@ -928,11 +916,13 @@ export function RealizationTab() {
             {overallPct}% used
           </div>
         </div>
+          </div>
+        </div>
       </div>
 
       {/* Alert summary */}
       {(criticalCount > 0 || warningCount > 0) && (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0,1fr))", gap: "16px" }}>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {rabCategories
             .filter((c) => getCategoryPct(c) >= 75)
             .map((cat) => {

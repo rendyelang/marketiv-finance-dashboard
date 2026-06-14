@@ -567,19 +567,9 @@ export function DetailedRABTab() {
     <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
       {/* Toolbar */}
       <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: "12px",
-          padding: "14px 16px",
-          borderRadius: "20px",
-          background: "white",
-          border: "1px solid rgba(17,24,39,0.08)",
-          boxShadow: "0 8px 24px rgba(15,23,42,0.06)",
-        }}
+        className="flex flex-col xl:flex-row xl:items-center justify-between gap-3 p-3.5 px-4 rounded-[20px] bg-white border border-slate-900/5 shadow-[0_8px_24px_rgba(15,23,42,0.06)]"
       >
-        <div style={{ display: "flex", alignItems: "center", gap: "10px", flex: 1 }}>
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2.5 flex-1">
           {/* Search */}
           <div
             style={{
@@ -617,7 +607,7 @@ export function DetailedRABTab() {
           </div>
 
           {/* Status filter */}
-          <div style={{ display: "flex", gap: "6px" }}>
+          <div className="flex flex-wrap gap-1.5">
             {(["All", "Planned", "In Progress", "Completed"] as const).map((s) => (
               <button
                 key={s}
@@ -715,17 +705,13 @@ export function DetailedRABTab() {
             {/* Category header */}
             <div
               onClick={() => toggleCollapse(cat.id)}
+              className="flex flex-col sm:flex-row sm:items-center gap-4 p-5 px-6 cursor-pointer select-none"
               style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "16px",
-                padding: "20px 24px",
                 background: `linear-gradient(135deg, ${cat.lightColor}, white)`,
                 borderBottom: isCollapsed ? "none" : "1px solid rgba(17,24,39,0.07)",
-                cursor: "pointer",
-                userSelect: "none",
               }}
             >
+              <div className="flex items-center gap-4 flex-1 min-w-0">
               {/* Color badge */}
               <div
                 style={{
@@ -751,7 +737,7 @@ export function DetailedRABTab() {
               </div>
 
               {/* Category info */}
-              <div style={{ flex: 1, minWidth: 0 }}>
+              <div className="flex-1 min-w-0">
                 <div
                   style={{
                     fontFamily: "'Sora', 'Plus Jakarta Sans', sans-serif",
@@ -776,6 +762,7 @@ export function DetailedRABTab() {
                   {cat.items.filter((i) => i.status === "Completed").length} completed ·{" "}
                   {cat.items.filter((i) => i.status === "Planned").length} planned
                 </div>
+              </div>
               </div>
 
               {/* Budget/Realization */}
@@ -866,19 +853,23 @@ export function DetailedRABTab() {
 
             {/* Items */}
             {!isCollapsed && (
-              <div style={{ padding: "16px 20px 20px" }}>
-                <TableHeader />
-                <div style={{ display: "flex", flexDirection: "column", gap: "5px" }}>
-                  {cat.items.map((item, idx) => (
-                    <ItemRow
-                      key={item.id}
-                      item={item}
-                      index={idx}
-                      catColor={cat.color}
-                    />
-                  ))}
+              <div className="p-4 md:p-5 lg:pb-5">
+                <div className="overflow-x-auto w-full pb-2">
+                  <div className="min-w-[1000px]">
+                    <TableHeader />
+                    <div style={{ display: "flex", flexDirection: "column", gap: "5px" }}>
+                      {cat.items.map((item, idx) => (
+                        <ItemRow
+                          key={item.id}
+                          item={item}
+                          index={idx}
+                          catColor={cat.color}
+                        />
+                      ))}
+                    </div>
+                    <SubtotalRow budget={cat.budget} used={realization} color={cat.color} />
+                  </div>
                 </div>
-                <SubtotalRow budget={cat.budget} used={realization} color={cat.color} />
 
                 {/* Add item row */}
                 <button
@@ -911,16 +902,10 @@ export function DetailedRABTab() {
 
       {/* Grand Total */}
       <div
+        className="p-6 md:p-7 rounded-[28px] border border-white/5 shadow-[0_18px_46px_rgba(12,23,43,0.22)] flex flex-col md:flex-row md:items-center gap-7"
         style={{
-          padding: "24px 28px",
-          borderRadius: "28px",
           background:
             "radial-gradient(circle at 0% 50%, rgba(249,115,22,0.10), transparent 14rem), linear-gradient(135deg, #0c172b 0%, #12213a 100%)",
-          border: "1px solid rgba(255,255,255,0.05)",
-          boxShadow: "0 18px 46px rgba(12,23,43,0.22)",
-          display: "flex",
-          alignItems: "center",
-          gap: "28px",
         }}
       >
         <div style={{ flex: 1 }}>

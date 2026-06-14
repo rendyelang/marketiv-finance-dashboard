@@ -59,20 +59,7 @@ export function UserDrawer({ user, onClose }: UserDrawerProps) {
 
       {/* Drawer panel */}
       <div
-        style={{
-          position: "fixed",
-          top: 0,
-          right: 0,
-          bottom: 0,
-          width: "520px",
-          maxWidth: "100vw",
-          zIndex: 100,
-          background: "#fbf7ef",
-          boxShadow: "-8px 0 48px rgba(12,23,43,0.18)",
-          display: "flex",
-          flexDirection: "column",
-          overflowY: "auto",
-        }}
+        className="fixed top-0 right-0 bottom-0 w-[520px] max-w-[100vw] z-[100] bg-[#fbf7ef] shadow-[-8px_0_48px_rgba(12,23,43,0.18)] flex flex-col overflow-y-auto"
       >
         {/* Header */}
         <div

@@ -1,4 +1,4 @@
-import { LayoutDashboard, ArrowLeftRight, FileSpreadsheet, BarChart3, Shield, Users } from "lucide-react";
+import { LayoutDashboard, ArrowLeftRight, FileSpreadsheet, BarChart3, Shield, Users, X } from "lucide-react";
 
 export type PageId = "dashboard" | "transactions" | "rab" | "reports" | "audit" | "users";
 
@@ -11,6 +11,8 @@ interface NavItem {
 interface SidebarProps {
   activePage: PageId;
   onNavigate: (page: PageId) => void;
+  isOpen?: boolean;
+  onClose?: () => void;
 }
 
 const navItems: NavItem[] = [
@@ -21,23 +23,24 @@ const navItems: NavItem[] = [
   { name: "Audit Trail", pageId: "audit", icon: Shield },
 ];
 
-export function Sidebar({ activePage, onNavigate }: SidebarProps) {
+export function Sidebar({ activePage, onNavigate, isOpen, onClose }: SidebarProps) {
   return (
     <div
-      style={{
-        width: "260px",
-        minHeight: "100vh",
-        background: "#0c172b",
-        display: "flex",
-        flexDirection: "column",
-        padding: "24px 16px",
-        flexShrink: 0,
-        position: "sticky",
-        top: 0,
-        height: "100vh",
-        overflowY: "auto",
-      }}
+      className={`
+        fixed inset-y-0 left-0 z-50 w-[260px] bg-[#0c172b] flex flex-col p-6 shrink-0 h-screen overflow-y-auto transition-transform duration-300 ease-in-out
+        ${isOpen ? "translate-x-0" : "-translate-x-full"}
+        lg:relative lg:translate-x-0 lg:sticky lg:top-0
+      `}
     >
+      {/* Mobile Close Button */}
+      {onClose && (
+        <button 
+          onClick={onClose}
+          className="lg:hidden absolute top-4 right-4 p-2 text-slate-400 hover:text-white rounded-lg hover:bg-white/10 transition-colors"
+        >
+          <X size={20} />
+        </button>
+      )}
       {/* Logo */}
       <div
         style={{

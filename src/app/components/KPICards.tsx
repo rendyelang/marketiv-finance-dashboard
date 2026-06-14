@@ -56,13 +56,7 @@ export function KPICards() {
   const [hovered, setHovered] = useState<number | null>(null);
 
   return (
-    <div
-      style={{
-        display: "grid",
-        gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
-        gap: "20px",
-      }}
-    >
+    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5">
       {cards.map((card, i) => {
         const Icon = card.icon;
         const isHovered = hovered === i;
