@@ -1,15 +1,17 @@
 import { useState } from "react";
 import {
-  rabCategories,
   getCategoryRealization,
-  getTotalRealization,
-  TOTAL_FUNDING,
   getStatusStyle,
   formatRp,
   type RABItem,
+  type RABCategory,
   type ApprovalStatus,
 } from "./rabData";
 import { Search, Plus, Filter, ChevronDown, ChevronUp, Edit3, Trash2 } from "lucide-react";
+import { useAuth } from "../../contexts/AuthContext";
+import { AddBudgetItemModal } from "./AddBudgetItemModal";
+import { deleteBudgetItem } from "../../../services/budget.service";
+import { toast } from "sonner";
 
 const COL_GRID =
   "36px minmax(180px,2.2fr) 92px 64px 124px 124px minmax(110px,1.1fr) 106px 110px 124px minmax(100px,1fr)";
@@ -134,10 +136,16 @@ function ItemRow({
   item,
   index,
   catColor,
+  isAdmin,
+  onEdit,
+  onDelete,
 }: {
   item: RABItem;
   index: number;
   catColor: string;
+  isAdmin: boolean;
+  onEdit: () => void;
+  onDelete: () => void;
 }) {
   const [hovered, setHovered] = useState(false);
   const remaining = item.totalAmount - item.usedAmount;
@@ -389,38 +397,44 @@ function ItemRow({
             zIndex: 2,
           }}
         >
-          <button
-            style={{
-              width: "28px",
-              height: "28px",
-              borderRadius: "8px",
-              background: "#f3f5f8",
-              border: "none",
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              color: "#556174",
-            }}
-          >
-            <Edit3 size={13} />
-          </button>
-          <button
-            style={{
-              width: "28px",
-              height: "28px",
-              borderRadius: "8px",
-              background: "rgba(220,38,38,0.07)",
-              border: "none",
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              color: "#dc2626",
-            }}
-          >
-            <Trash2 size={13} />
-          </button>
+          {isAdmin && (
+            <>
+              <button
+                onClick={onEdit}
+                style={{
+                  width: "28px",
+                  height: "28px",
+                  borderRadius: "8px",
+                  background: "#f3f5f8",
+                  border: "none",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  color: "#556174",
+                }}
+              >
+                <Edit3 size={13} />
+              </button>
+              <button
+                onClick={onDelete}
+                style={{
+                  width: "28px",
+                  height: "28px",
+                  borderRadius: "8px",
+                  background: "rgba(220,38,38,0.07)",
+                  border: "none",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  color: "#dc2626",
+                }}
+              >
+                <Trash2 size={13} />
+              </button>
+            </>
+          )}
         </div>
       )}
     </div>
@@ -534,13 +548,25 @@ function SubtotalRow({
   );
 }
 
-export function DetailedRABTab() {
+interface DetailedRABTabProps {
+  rabCategories: RABCategory[];
+  totalBudget: number;
+  totalRealization: number;
+  isLoading: boolean;
+  onDataChange: () => void;
+}
+
+export function DetailedRABTab({ rabCategories, totalBudget, totalRealization, isLoading, onDataChange }: DetailedRABTabProps) {
   const [search, setSearch] = useState("");
   const [collapsedCats, setCollapsedCats] = useState<Set<string>>(new Set());
   const [filterStatus, setFilterStatus] = useState<ApprovalStatus | "All">("All");
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [addModalCategoryId, setAddModalCategoryId] = useState<string | undefined>();
+  const [editItemData, setEditItemData] = useState<(RABItem & { categoryId: string }) | null>(null);
+  const { profile } = useAuth();
+  const isAdmin = profile?.role === "ADMIN";
 
-  const totalRealization = getTotalRealization();
-  const totalPct = Math.round((totalRealization / TOTAL_FUNDING) * 100);
+  const totalPct = totalBudget > 0 ? Math.round((totalRealization / totalBudget) * 100) : 0;
 
   const toggleCollapse = (id: string) => {
     setCollapsedCats((prev) => {
@@ -548,6 +574,17 @@ export function DetailedRABTab() {
       next.has(id) ? next.delete(id) : next.add(id);
       return next;
     });
+  };
+
+  const handleDeleteItem = async (id: string) => {
+    if (!window.confirm("Are you sure you want to delete this budget item?")) return;
+    const { success, error } = await deleteBudgetItem(id);
+    if (success) {
+      toast.success("Budget item deleted");
+      onDataChange();
+    } else {
+      toast.error(error || "Failed to delete item");
+    }
   };
 
   const filteredCategories = rabCategories.map((cat) => ({
@@ -562,6 +599,16 @@ export function DetailedRABTab() {
       return matchSearch && matchStatus;
     }),
   }));
+
+  if (isLoading) {
+    return (
+      <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+        {[1, 2, 3].map((i) => (
+          <div key={i} style={{ height: "120px", borderRadius: "28px", background: "#f8fafc", border: "1px solid rgba(17,24,39,0.08)" }} />
+        ))}
+      </div>
+    );
+  }
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
@@ -658,7 +705,9 @@ export function DetailedRABTab() {
         </div>
 
         {/* Right: Add button */}
+        {isAdmin && (
         <button
+          onClick={() => { setAddModalCategoryId(undefined); setShowAddModal(true); }}
           style={{
             display: "flex",
             alignItems: "center",
@@ -681,6 +730,7 @@ export function DetailedRABTab() {
           <Plus size={15} />
           Add Budget Item
         </button>
+        )}
       </div>
 
       {/* Category groups */}
@@ -864,6 +914,9 @@ export function DetailedRABTab() {
                           item={item}
                           index={idx}
                           catColor={cat.color}
+                          isAdmin={isAdmin}
+                          onEdit={() => setEditItemData({ ...item, categoryId: cat.id })}
+                          onDelete={() => handleDeleteItem(item.id)}
                         />
                       ))}
                     </div>
@@ -872,7 +925,9 @@ export function DetailedRABTab() {
                 </div>
 
                 {/* Add item row */}
+                {isAdmin && (
                 <button
+                  onClick={() => { setAddModalCategoryId(cat.id); setShowAddModal(true); }}
                   style={{
                     display: "flex",
                     alignItems: "center",
@@ -894,6 +949,7 @@ export function DetailedRABTab() {
                   <Plus size={13} />
                   Add item to {cat.name}
                 </button>
+                )}
               </div>
             )}
           </div>
@@ -931,7 +987,7 @@ export function DetailedRABTab() {
               lineHeight: 1,
             }}
           >
-            {formatRp(TOTAL_FUNDING)}
+            {formatRp(totalBudget)}
           </div>
           <div
             style={{
@@ -1022,7 +1078,7 @@ export function DetailedRABTab() {
               lineHeight: 1,
             }}
           >
-            {formatRp(TOTAL_FUNDING - totalRealization)}
+            {formatRp(totalBudget - totalRealization)}
           </div>
           <div
             style={{
@@ -1078,6 +1134,24 @@ export function DetailedRABTab() {
           </div>
         </div>
       </div>
+
+      {/* Add Budget Item Modal */}
+      {(showAddModal || editItemData) && (
+        <AddBudgetItemModal
+          onClose={() => {
+            setShowAddModal(false);
+            setEditItemData(null);
+          }}
+          onSuccess={() => {
+            setShowAddModal(false);
+            setEditItemData(null);
+            onDataChange();
+            toast.success(editItemData ? "Budget item updated" : "Budget item added");
+          }}
+          preselectedCategoryId={addModalCategoryId}
+          editItem={editItemData ?? undefined}
+        />
+      )}
     </div>
   );
 }
