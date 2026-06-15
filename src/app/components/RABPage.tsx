@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { TopNav } from "./TopNav";
 import { SummaryTab } from "./rab/SummaryTab";
 import { DetailedRABTab } from "./rab/DetailedRABTab";
 import { RealizationTab } from "./rab/RealizationTab";
-import { getTotalRealization, TOTAL_FUNDING, formatRp } from "./rab/rabData";
-import { Download, FileText, BarChart2 } from "lucide-react";
+import { getTotalRealization, formatRp } from "./rab/rabData";
+import { Download, FileText } from "lucide-react";
+import { fetchRABData, type RABCategoryView } from "../../services/budget.service";
 
 type TabId = "summary" | "detailed" | "realization";
 
@@ -14,15 +15,64 @@ const tabs: { id: TabId; label: string; desc: string }[] = [
   { id: "realization", label: "Realization", desc: "Planned vs actual spending" },
 ];
 
-const totalRealization = getTotalRealization();
-const overallPct = Math.round((totalRealization / TOTAL_FUNDING) * 100);
-
 interface RABPageProps {
   onMenuClick?: () => void;
 }
 
 export function RABPage({ onMenuClick }: RABPageProps) {
   const [activeTab, setActiveTab] = useState<TabId>("summary");
+  const [categories, setCategories] = useState<RABCategoryView[]>([]);
+  const [totalBudget, setTotalBudget] = useState(0);
+  const [totalRealization, setTotalRealizationVal] = useState(0);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const loadData = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    const result = await fetchRABData();
+    if (result.error) {
+      setError(result.error);
+    } else {
+      setCategories(result.categories);
+      setTotalBudget(result.totalBudget);
+      setTotalRealizationVal(result.totalRealization);
+    }
+    setIsLoading(false);
+  }, []);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  const overallPct = totalBudget > 0 ? Math.round((totalRealization / totalBudget) * 100) : 0;
+
+  // Map RABCategoryView[] to the RABCategory[] shape expected by child components
+  const rabCategories = categories.map((cat) => ({
+    id: cat.id,
+    name: cat.name,
+    budget: cat.budget,
+    color: cat.color,
+    lightColor: cat.lightColor,
+    borderColor: cat.borderColor,
+    items: cat.items.map((item) => ({
+      id: item.id,
+      mainActivity: item.mainActivity,
+      activity: item.activity,
+      itemType: "",
+      qty: item.qty,
+      unit: item.unit,
+      unitPrice: item.unitPrice,
+      totalAmount: item.totalAmount,
+      targetOutput: item.targetOutput,
+      pic: item.pic,
+      status: item.status,
+      usedAmount: item.usedAmount,
+      justification: "",
+      referenceUrl: item.referenceUrl,
+      activity_id: item.activity_id,
+    })),
+  }));
 
   return (
     <div className="flex-1 flex flex-col min-w-0 max-h-screen overflow-y-auto">
@@ -63,9 +113,9 @@ export function RABPage({ onMenuClick }: RABPageProps) {
             {/* Quick stats */}
             <div className="flex flex-wrap gap-4 lg:gap-6 mt-5">
               {[
-                { label: "Total Budget", value: formatRp(TOTAL_FUNDING), color: "rgba(255,255,255,0.9)" },
-                { label: "Realized", value: formatRp(totalRealization), color: "#fb923c" },
-                { label: "Utilization", value: `${overallPct}%`, color: "#4ade80" },
+                { label: "Total Budget", value: isLoading ? "Loading..." : formatRp(totalBudget), color: "rgba(255,255,255,0.9)" },
+                { label: "Realized", value: isLoading ? "Loading..." : formatRp(totalRealization), color: "#fb923c" },
+                { label: "Utilization", value: isLoading ? "..." : `${overallPct}%`, color: "#4ade80" },
               ].map((stat) => (
                 <div key={stat.label}>
                   <div
@@ -209,10 +259,49 @@ export function RABPage({ onMenuClick }: RABPageProps) {
           </div>
         </div>
 
+        {/* Error state */}
+        {error && (
+          <div
+            style={{
+              padding: "16px 20px",
+              borderRadius: "16px",
+              background: "rgba(220,38,38,0.06)",
+              border: "1px solid rgba(220,38,38,0.18)",
+              color: "#dc2626",
+              fontSize: "0.85rem",
+              fontWeight: 600,
+            }}
+          >
+            Failed to load budget data: {error}
+          </div>
+        )}
+
         {/* Tab content */}
-        {activeTab === "summary" && <SummaryTab />}
-        {activeTab === "detailed" && <DetailedRABTab />}
-        {activeTab === "realization" && <RealizationTab />}
+        {activeTab === "summary" && (
+          <SummaryTab
+            rabCategories={rabCategories}
+            totalBudget={totalBudget}
+            totalRealization={totalRealization}
+            isLoading={isLoading}
+          />
+        )}
+        {activeTab === "detailed" && (
+          <DetailedRABTab
+            rabCategories={rabCategories}
+            totalBudget={totalBudget}
+            totalRealization={totalRealization}
+            isLoading={isLoading}
+            onDataChange={loadData}
+          />
+        )}
+        {activeTab === "realization" && (
+          <RealizationTab
+            rabCategories={rabCategories}
+            totalBudget={totalBudget}
+            totalRealization={totalRealization}
+            isLoading={isLoading}
+          />
+        )}
       </main>
     </div>
   );

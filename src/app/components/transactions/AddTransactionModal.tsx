@@ -11,7 +11,7 @@ import {
   Link2,
 } from "lucide-react";
 import { type TransactionType, type TransactionStatus, CATEGORY_MAP } from "./transactionData";
-import { rabCategories } from "../rab/rabData";
+import { fetchRABData, type RABCategoryView } from "../../../services/budget.service";
 
 interface AddTransactionModalProps {
   onClose: () => void;
@@ -63,6 +63,17 @@ export function AddTransactionModal({ onClose, onSave }: AddTransactionModalProp
   const [relatedItemId, setRelatedItemId] = useState<string | null>(null);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [itemSearch, setItemSearch] = useState("");
+  const [rabCategories, setRabCategories] = useState<RABCategoryView[]>([]);
+
+  // Load RAB data for budget item selection
+  useEffect(() => {
+    (async () => {
+      const result = await fetchRABData();
+      if (!result.error) {
+        setRabCategories(result.categories);
+      }
+    })();
+  }, []);
 
   // Reset RAB item when category or type changes
   useEffect(() => {
@@ -72,7 +83,15 @@ export function AddTransactionModal({ onClose, onSave }: AddTransactionModalProp
   }, [category, txType]);
 
   const selectedRabCategory = rabCategories.find((c) => c.name === category);
-  const availableItems = selectedRabCategory?.items ?? [];
+  const availableItems = (selectedRabCategory?.items ?? []).map((item) => ({
+    id: item.id,
+    mainActivity: item.mainActivity,
+    activity: item.activity,
+    totalAmount: item.totalAmount,
+    usedAmount: item.usedAmount,
+    status: item.status,
+    color: selectedRabCategory?.color ?? "#f97316",
+  }));
   const filteredItems = availableItems.filter(
     (item) =>
       !itemSearch ||

@@ -10,35 +10,14 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import {
-  rabCategories,
-  TOTAL_FUNDING,
   getCategoryRealization,
   getCategoryRemaining,
   getCategoryPct,
-  getTotalRealization,
   getUtilizationStatus,
   formatRp,
+  type RABCategory,
 } from "./rabData";
 import { TrendingUp, AlertTriangle, CheckCircle2, Download, ArrowUpRight } from "lucide-react";
-
-const totalRealization = getTotalRealization();
-const totalRemaining = TOTAL_FUNDING - totalRealization;
-const overallPct = Math.round((totalRealization / TOTAL_FUNDING) * 100);
-
-const chartData = rabCategories.map((cat) => {
-  const realized = getCategoryRealization(cat);
-  const remaining = getCategoryRemaining(cat);
-  const pct = getCategoryPct(cat);
-  return {
-    name: cat.name.split(" ").slice(0, 2).join(" "),
-    fullName: cat.name,
-    budget: cat.budget,
-    realization: realized,
-    remaining,
-    pct,
-    color: cat.color,
-  };
-});
 
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
@@ -147,14 +126,49 @@ const CustomTooltip = ({ active, payload, label }: any) => {
   return null;
 };
 
-export function RealizationTab() {
+interface RealizationTabProps {
+  rabCategories: RABCategory[];
+  totalBudget: number;
+  totalRealization: number;
+  isLoading: boolean;
+}
+
+export function RealizationTab({ rabCategories, totalBudget, totalRealization, isLoading }: RealizationTabProps) {
   const [hoveredRow, setHoveredRow] = useState<string | null>(null);
+
+  const totalRemaining = totalBudget - totalRealization;
+  const overallPct = totalBudget > 0 ? Math.round((totalRealization / totalBudget) * 100) : 0;
+
+  const chartData = rabCategories.map((cat) => {
+    const realized = getCategoryRealization(cat);
+    const remaining = getCategoryRemaining(cat);
+    const pct = getCategoryPct(cat);
+    return {
+      name: cat.name.split(" ").slice(0, 2).join(" "),
+      fullName: cat.name,
+      budget: cat.budget,
+      realization: realized,
+      remaining,
+      pct,
+      color: cat.color,
+    };
+  });
 
   const criticalCount = rabCategories.filter((c) => getCategoryPct(c) >= 90).length;
   const warningCount = rabCategories.filter(
     (c) => getCategoryPct(c) >= 75 && getCategoryPct(c) < 90
   ).length;
   const onTrackCount = rabCategories.filter((c) => getCategoryPct(c) < 75).length;
+
+  if (isLoading) {
+    return (
+      <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
+        {[1, 2, 3].map((i) => (
+          <div key={i} style={{ height: "100px", borderRadius: "24px", background: "#f8fafc", border: "1px solid rgba(17,24,39,0.08)" }} />
+        ))}
+      </div>
+    );
+  }
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
@@ -163,7 +177,7 @@ export function RealizationTab() {
         {[
           {
             label: "Total Budget",
-            value: formatRp(TOTAL_FUNDING),
+            value: formatRp(totalBudget),
             icon: TrendingUp,
             color: "#ea580c",
             bg: "#fff7ed",
@@ -643,7 +657,7 @@ export function RealizationTab() {
                       fontWeight: 600,
                     }}
                   >
-                    {((cat.budget / TOTAL_FUNDING) * 100).toFixed(1)}% of total
+                    {totalBudget > 0 ? ((cat.budget / totalBudget) * 100).toFixed(1) : 0}% of total
                   </div>
                 </div>
 
@@ -822,7 +836,7 @@ export function RealizationTab() {
               letterSpacing: "-0.04em",
             }}
           >
-            {formatRp(TOTAL_FUNDING)}
+            {formatRp(totalBudget)}
           </div>
           <div
             style={{
