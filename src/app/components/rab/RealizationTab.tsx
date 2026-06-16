@@ -18,6 +18,7 @@ import {
   type RABCategory,
 } from "./rabData";
 import { TrendingUp, AlertTriangle, CheckCircle2, Download, ArrowUpRight } from "lucide-react";
+import { toast } from "sonner";
 import { RealizationDrawer } from "./RealizationDrawer";
 
 const CustomTooltip = ({ active, payload, label }: any) => {
@@ -380,6 +381,7 @@ export function RealizationTab({ rabCategories, totalBudget, totalRealization, i
               </div>
             ))}
             <button
+              onClick={() => toast.info('Feature under construction 🚧')}
               style={{
                 display: "flex",
                 alignItems: "center",

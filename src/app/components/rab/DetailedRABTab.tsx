@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   getCategoryRealization,
   getStatusStyle,
@@ -564,9 +564,10 @@ interface DetailedRABTabProps {
   totalRealization: number;
   isLoading: boolean;
   onDataChange: () => void;
+  targetCategoryId?: string;
 }
 
-export function DetailedRABTab({ rabCategories, totalBudget, totalRealization, isLoading, onDataChange }: DetailedRABTabProps) {
+export function DetailedRABTab({ rabCategories, totalBudget, totalRealization, isLoading, onDataChange, targetCategoryId }: DetailedRABTabProps) {
   const [search, setSearch] = useState("");
   const [collapsedCats, setCollapsedCats] = useState<Set<string>>(new Set());
   const [filterStatus, setFilterStatus] = useState<ApprovalStatus | "All">("All");
@@ -578,6 +579,28 @@ export function DetailedRABTab({ rabCategories, totalBudget, totalRealization, i
   const isAdmin = profile?.role === "ADMIN";
 
   const totalPct = totalBudget > 0 ? Math.round((totalRealization / totalBudget) * 100) : 0;
+
+  useEffect(() => {
+    if (!isLoading && targetCategoryId) {
+      setTimeout(() => {
+        const el = document.getElementById(`category-${targetCategoryId}`);
+        if (el) {
+          el.scrollIntoView({ behavior: "smooth", block: "center" });
+          el.style.transition = "box-shadow 0.3s ease-in-out";
+          el.style.boxShadow = "0 0 0 3px rgba(249,115,22,0.5), 0 8px 24px rgba(15,23,42,0.12)";
+          setTimeout(() => {
+            el.style.boxShadow = "0 8px 24px rgba(15,23,42,0.06)";
+          }, 2500);
+
+          setCollapsedCats((prev) => {
+            const next = new Set(prev);
+            next.delete(targetCategoryId);
+            return next;
+          });
+        }
+      }, 100);
+    }
+  }, [isLoading, targetCategoryId]);
 
   const toggleCollapse = (id: string) => {
     setCollapsedCats((prev) => {
@@ -755,6 +778,7 @@ export function DetailedRABTab({ rabCategories, totalBudget, totalRealization, i
         return (
           <div
             key={cat.id}
+            id={`category-${cat.id}`}
             style={{
               borderRadius: "28px",
               background: "white",

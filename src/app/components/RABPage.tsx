@@ -1,10 +1,12 @@
 import { useState, useEffect, useCallback } from "react";
+import { useLocation } from "react-router";
 import { TopNav } from "./TopNav";
 import { SummaryTab } from "./rab/SummaryTab";
 import { DetailedRABTab } from "./rab/DetailedRABTab";
 import { RealizationTab } from "./rab/RealizationTab";
 import { getTotalRealization, formatRp } from "./rab/rabData";
-import { Download, FileText } from "lucide-react";
+import { Plus, Search, ChevronDown, Download, FileText } from "lucide-react";
+import { toast } from "sonner";
 import { fetchRABData, type RABCategoryView } from "../../services/budget.service";
 
 type TabId = "summary" | "detailed" | "realization";
@@ -20,7 +22,12 @@ interface RABPageProps {
 }
 
 export function RABPage({ onMenuClick }: RABPageProps) {
+  const location = useLocation();
   const [activeTab, setActiveTab] = useState<TabId>("summary");
+  
+  // Extract target category from navigation state
+  const targetCategoryId = location.state?.targetCategoryId as string | undefined;
+
   const [categories, setCategories] = useState<RABCategoryView[]>([]);
   const [totalBudget, setTotalBudget] = useState(0);
   const [totalRealization, setTotalRealizationVal] = useState(0);
@@ -44,6 +51,13 @@ export function RABPage({ onMenuClick }: RABPageProps) {
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  // Auto-switch to detailed tab if target category is provided
+  useEffect(() => {
+    if (targetCategoryId) {
+      setActiveTab("detailed");
+    }
+  }, [targetCategoryId]);
 
   const overallPct = totalBudget > 0 ? Math.round((totalRealization / totalBudget) * 100) : 0;
 
@@ -78,7 +92,7 @@ export function RABPage({ onMenuClick }: RABPageProps) {
     <div className="flex-1 flex flex-col min-w-0 max-h-screen overflow-y-auto">
       <TopNav
         title="Rencana Anggaran Biaya"
-        subtitle="P2MW 2025 Budget Planning & Realization"
+        subtitle="P2MW 2026 Budget Planning & Realization"
         onMenuClick={onMenuClick}
       />
 
@@ -106,7 +120,7 @@ export function RABPage({ onMenuClick }: RABPageProps) {
               Rencana Anggaran Biaya
             </div>
             <div style={{ color: "rgba(255,255,255,0.50)", fontSize: "0.88rem", fontWeight: 500, maxWidth: "520px", lineHeight: 1.55 }}>
-              Complete budget planning and realization tracking for Marketiv P2MW 2025 program.
+              Complete budget planning and realization tracking for Marketiv P2MW 2026 program.
               Manage allocations, track spending, and ensure financial transparency.
             </div>
 
@@ -150,6 +164,7 @@ export function RABPage({ onMenuClick }: RABPageProps) {
           {/* Right: Action buttons */}
           <div className="flex flex-row lg:flex-col gap-2.5 shrink-0 w-full lg:w-auto lg:items-end">
             <button
+              onClick={() => toast.info('Feature under construction 🚧')}
               style={{
                 display: "flex",
                 alignItems: "center",
@@ -173,6 +188,7 @@ export function RABPage({ onMenuClick }: RABPageProps) {
               Export PDF
             </button>
             <button
+              onClick={() => toast.info('Feature under construction 🚧')}
               style={{
                 display: "flex",
                 alignItems: "center",
@@ -292,6 +308,7 @@ export function RABPage({ onMenuClick }: RABPageProps) {
             totalRealization={totalRealization}
             isLoading={isLoading}
             onDataChange={loadData}
+            targetCategoryId={targetCategoryId}
           />
         )}
         {activeTab === "realization" && (

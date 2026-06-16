@@ -406,3 +406,109 @@ export async function deleteBudgetItem(
   }
   return { success: true, error: null };
 }
+
+// ─── Dashboard Data ──────────────────────────────────────────────────────────
+
+export interface DashboardCategorySummary {
+  id: string;
+  name: string;
+  budget: number;
+  realization: number;
+  color: string;
+}
+
+export interface DashboardActivityLog {
+  id: string;
+  action: string;
+  entity_type: string;
+  entity_id: string;
+  user_name: string;
+  created_at: string;
+}
+
+export interface DashboardData {
+  totalFunding: number;
+  totalExpense: number;
+  totalBudget: number;
+  remainingFunds: number;
+  budgetUtilization: number;
+  categories: DashboardCategorySummary[];
+  recentActivity: DashboardActivityLog[];
+}
+
+/**
+ * Fetch all data needed for the Dashboard page in a single parallel call.
+ */
+export async function fetchDashboardData(): Promise<{
+  data: DashboardData | null;
+  error: string | null;
+}> {
+  const [rabRes, incomeRes, activityRes] = await Promise.all([
+    // 1. RAB data (reuses existing function)
+    fetchRABData(),
+    // 2. Sum of all income transactions
+    supabase
+      .from("transactions")
+      .select("amount")
+      .in("type", ["Income", "income"]),
+    // 3. Latest 5 activity logs
+    supabase
+      .from("activity_logs")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(3),
+  ]);
+
+  if (rabRes.error) {
+    return { data: null, error: rabRes.error };
+  }
+  if (incomeRes.error) {
+    return { data: null, error: incomeRes.error.message };
+  }
+  if (activityRes.error) {
+    return { data: null, error: activityRes.error.message };
+  }
+
+  const totalFunding = (incomeRes.data ?? []).reduce(
+    (sum: number, tx: { amount: number }) => sum + tx.amount,
+    0
+  );
+
+  const totalExpense = rabRes.totalRealization;
+  const totalBudget = rabRes.totalBudget;
+  const remainingFunds = totalFunding - totalExpense;
+  const budgetUtilization =
+    totalBudget > 0 ? Math.round((totalExpense / totalBudget) * 100) : 0;
+
+  const categories: DashboardCategorySummary[] = rabRes.categories.map((cat) => ({
+    id: cat.id,
+    name: cat.name,
+    budget: cat.budget,
+    realization: cat.items.reduce((s, item) => s + item.usedAmount, 0),
+    color: cat.color,
+  }));
+
+  const recentActivity: DashboardActivityLog[] = (activityRes.data ?? []).map(
+    (log: any) => ({
+      id: log.id,
+      action: log.action,
+      entity_type: log.entity_type,
+      entity_id: log.entity_id,
+      user_name: log.user_name || "System",
+      created_at: log.created_at,
+    })
+  );
+
+  return {
+    data: {
+      totalFunding,
+      totalExpense,
+      totalBudget,
+      remainingFunds,
+      budgetUtilization,
+      categories,
+      recentActivity,
+    },
+    error: null,
+  };
+}

@@ -151,7 +151,7 @@ export function SummaryTab({ rabCategories, totalBudget, totalRealization, isLoa
       iconColor: "#ea580c",
       iconBg: "#fff7ed",
       iconBorder: "rgba(249,115,22,0.18)",
-      badge: "P2MW 2025",
+      badge: "P2MW 2026",
       badgeColor: "#ea580c",
       badgeBg: "rgba(249,115,22,0.09)",
       note: "Full program allocation",

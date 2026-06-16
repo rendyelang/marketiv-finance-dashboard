@@ -1,38 +1,7 @@
 import { useState } from "react";
 import { Download, TrendingUp } from "lucide-react";
-
-const categories = [
-  {
-    name: "Product Development",
-    budget: 8000000,
-    realization: 1000000,
-    color: "#f97316",
-  },
-  {
-    name: "Production",
-    budget: 5000000,
-    realization: 4500000,
-    color: "#2563eb",
-  },
-  {
-    name: "Legalization",
-    budget: 2500000,
-    realization: 2000000,
-    color: "#7c3aed",
-  },
-  {
-    name: "HR Certification",
-    budget: 2500000,
-    realization: 1200000,
-    color: "#16a34a",
-  },
-  {
-    name: "ATK & Support",
-    budget: 2000000,
-    realization: 500000,
-    color: "#d97706",
-  },
-];
+import { toast } from "sonner";
+import type { DashboardCategorySummary } from "../../services/budget.service";
 
 function formatRp(n: number) {
   return `Rp ${n.toLocaleString("id-ID")}`;
@@ -44,8 +13,19 @@ function getStatusColor(pct: number) {
   return { color: "#16a34a", bg: "rgba(22,163,74,0.08)", label: "On Track" };
 }
 
-export function BudgetProgress() {
+interface BudgetProgressProps {
+  categories: DashboardCategorySummary[];
+  totalBudget: number;
+  totalRealization: number;
+  isLoading?: boolean;
+}
+
+export function BudgetProgress({ categories, totalBudget, totalRealization, isLoading }: BudgetProgressProps) {
   const [hovered, setHovered] = useState<number | null>(null);
+
+  const totalRemaining = totalBudget - totalRealization;
+  const overallPct = totalBudget > 0 ? Math.round((totalRealization / totalBudget) * 100) : 0;
+  const overallStatus = getStatusColor(overallPct);
 
   return (
     <div
@@ -109,6 +89,7 @@ export function BudgetProgress() {
           </div>
         </div>
         <button
+          onClick={() => toast.info('Feature under construction 🚧')}
           style={{
             display: "flex",
             alignItems: "center",
@@ -165,9 +146,10 @@ export function BudgetProgress() {
       {/* Rows */}
       <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
         {categories.map((cat, i) => {
-          const pct = Math.round((cat.realization / cat.budget) * 100);
+          const pct = cat.budget > 0 ? Math.round((cat.realization / cat.budget) * 100) : 0;
           const status = getStatusColor(pct);
           const isHovered = hovered === i;
+          const remaining = cat.budget - cat.realization;
 
           return (
             <div
@@ -248,11 +230,11 @@ export function BudgetProgress() {
                   fontFamily: "'Sora', sans-serif",
                   fontSize: "0.88rem",
                   fontWeight: 700,
-                  color: "#16a34a",
+                  color: remaining >= 0 ? "#16a34a" : "#dc2626",
                   letterSpacing: "-0.025em",
                 }}
               >
-                {formatRp(cat.budget - cat.realization)}
+                {formatRp(remaining)}
               </div>
 
               {/* Progress bar */}
@@ -293,7 +275,7 @@ export function BudgetProgress() {
                   <div
                     style={{
                       height: "100%",
-                      width: `${pct}%`,
+                      width: `${Math.min(pct, 100)}%`,
                       borderRadius: "999px",
                       background: `linear-gradient(90deg, ${cat.color}, ${cat.color}bb)`,
                       boxShadow: `0 2px 8px ${cat.color}30`,
@@ -367,7 +349,7 @@ export function BudgetProgress() {
             letterSpacing: "-0.03em",
           }}
         >
-          Rp 20.000.000
+          {formatRp(totalBudget)}
         </div>
         <div
           style={{
@@ -378,18 +360,18 @@ export function BudgetProgress() {
             letterSpacing: "-0.03em",
           }}
         >
-          Rp 9.200.000
+          {formatRp(totalRealization)}
         </div>
         <div
           style={{
             fontFamily: "'Sora', sans-serif",
             fontSize: "0.88rem",
             fontWeight: 800,
-            color: "#16a34a",
+            color: totalRemaining >= 0 ? "#16a34a" : "#dc2626",
             letterSpacing: "-0.03em",
           }}
         >
-          Rp 10.800.000
+          {formatRp(totalRemaining)}
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
           <div
@@ -404,7 +386,7 @@ export function BudgetProgress() {
             <div
               style={{
                 height: "100%",
-                width: "46%",
+                width: `${Math.min(overallPct, 100)}%`,
                 borderRadius: "999px",
                 background: "linear-gradient(90deg, #f97316, #fbbf24)",
                 boxShadow: "0 2px 8px rgba(249,115,22,0.24)",
@@ -420,7 +402,7 @@ export function BudgetProgress() {
               flexShrink: 0,
             }}
           >
-            46%
+            {overallPct}%
           </span>
         </div>
         <div
