@@ -285,14 +285,7 @@ function PermissionsOverview() {
       </div>
 
       <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "1fr 120px 120px",
-          gap: "14px",
-          padding: "12px 28px",
-          background: "#f8fafc",
-          borderBottom: "1px solid rgba(17,24,39,0.06)",
-        }}
+        className="grid grid-cols-[1fr_75px_75px] sm:grid-cols-[1fr_120px_120px] gap-2 sm:gap-[14px] px-4 sm:px-[28px] py-[12px] bg-[#f8fafc] border-b border-gray-900/5 items-center"
       >
         <div
           style={{
@@ -335,14 +328,7 @@ function PermissionsOverview() {
         {PERMISSIONS.map((perm) => (
           <div
             key={perm.key}
-            style={{
-              display: "grid",
-              gridTemplateColumns: "1fr 120px 120px",
-              gap: "14px",
-              alignItems: "center",
-              padding: "13px 12px",
-              borderRadius: "14px",
-            }}
+            className="grid grid-cols-[1fr_75px_75px] sm:grid-cols-[1fr_120px_120px] gap-2 sm:gap-[14px] items-center px-2 sm:px-[12px] py-[13px] rounded-[14px]"
           >
             <div style={{ minWidth: 0 }}>
               <div
