@@ -1,15 +1,16 @@
 import { useState } from "react";
-import { X, ShieldCheck, Check, Minus, Send } from "lucide-react";
+import { X, ShieldCheck, Check, Minus, Send, Loader2 } from "lucide-react";
 import {
   type UserRole,
   PERMISSIONS,
   ROLE_PERMISSIONS,
   getRoleStyle,
 } from "./userData";
+import { inviteUser } from "../../../services/user.service";
 
 interface AddUserModalProps {
   onClose: () => void;
-  onSave?: (data: any) => void;
+  onSuccess?: () => void;
 }
 
 const fieldStyle: React.CSSProperties = {
@@ -37,28 +38,49 @@ const labelStyle: React.CSSProperties = {
 };
 
 const ROLE_INFO: Record<UserRole, string> = {
-  Admin: "Full access — manage users, approve transactions, and configure budgets.",
-  Member: "Day-to-day operations — record transactions and budgets, view reports.",
+  ADMIN: "Full access — manage users, approve transactions, and configure budgets.",
+  MEMBER: "Day-to-day operations — record transactions and budgets, view reports.",
 };
 
-export function AddUserModal({ onClose, onSave }: AddUserModalProps) {
+export function AddUserModal({ onClose, onSuccess }: AddUserModalProps) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [position, setPosition] = useState("");
-  const [role, setRole] = useState<UserRole>("Member");
+  const [role, setRole] = useState<UserRole>("MEMBER");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const grantedKeys = ROLE_PERMISSIONS[role];
 
-  const handleSave = () => {
-    onSave?.({ name, email, position, role, permissionKeys: grantedKeys });
-    onClose();
+  const handleSave = async () => {
+    if (!name || !email || !position) {
+      setError("Please fill all required fields.");
+      return;
+    }
+    
+    setLoading(true);
+    setError(null);
+    
+    const { success, error: inviteErr } = await inviteUser({
+      email,
+      full_name: name,
+      position,
+      role
+    });
+
+    setLoading(false);
+
+    if (success) {
+      onSuccess?.();
+    } else {
+      setError(inviteErr || "An error occurred");
+    }
   };
 
   return (
     <>
-      {/* Backdrop */}
       <div
-        onClick={onClose}
+        onClick={loading ? undefined : onClose}
         style={{
           position: "fixed",
           inset: 0,
@@ -68,7 +90,6 @@ export function AddUserModal({ onClose, onSave }: AddUserModalProps) {
         }}
       />
 
-      {/* Modal */}
       <div
         style={{
           position: "fixed",
@@ -85,7 +106,6 @@ export function AddUserModal({ onClose, onSave }: AddUserModalProps) {
           border: "1px solid rgba(255,255,255,0.80)",
         }}
       >
-        {/* Header */}
         <div
           style={{
             padding: "24px 28px 20px",
@@ -117,7 +137,7 @@ export function AddUserModal({ onClose, onSave }: AddUserModalProps) {
             </div>
           </div>
           <button
-            onClick={onClose}
+            onClick={loading ? undefined : onClose}
             style={{
               width: "34px",
               height: "34px",
@@ -127,19 +147,24 @@ export function AddUserModal({ onClose, onSave }: AddUserModalProps) {
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              cursor: "pointer",
+              cursor: loading ? "not-allowed" : "pointer",
               color: "#182033",
               flexShrink: 0,
               boxShadow: "0 4px 12px rgba(15,23,42,0.06)",
+              opacity: loading ? 0.5 : 1,
             }}
           >
             <X size={15} />
           </button>
         </div>
 
-        {/* Body */}
         <div style={{ padding: "24px 28px", display: "flex", flexDirection: "column", gap: "18px" }}>
-          {/* Name + Email */}
+          {error && (
+            <div style={{ padding: "10px", background: "#fee2e2", color: "#b91c1c", borderRadius: "8px", fontSize: "0.85rem" }}>
+              {error}
+            </div>
+          )}
+          
           <div>
             <label style={labelStyle}>Full Name</label>
             <input
@@ -148,6 +173,7 @@ export function AddUserModal({ onClose, onSave }: AddUserModalProps) {
               value={name}
               onChange={(e) => setName(e.target.value)}
               style={fieldStyle}
+              disabled={loading}
             />
           </div>
 
@@ -159,6 +185,7 @@ export function AddUserModal({ onClose, onSave }: AddUserModalProps) {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               style={fieldStyle}
+              disabled={loading}
             />
           </div>
 
@@ -170,29 +197,31 @@ export function AddUserModal({ onClose, onSave }: AddUserModalProps) {
               value={position}
               onChange={(e) => setPosition(e.target.value)}
               style={fieldStyle}
+              disabled={loading}
             />
           </div>
 
-          {/* Role selector */}
           <div>
             <label style={labelStyle}>Role</label>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
-              {(["Admin", "Member"] as UserRole[]).map((r) => {
+              {(["ADMIN", "MEMBER"] as UserRole[]).map((r) => {
                 const isSelected = role === r;
                 const rs = getRoleStyle(r);
                 return (
                   <button
                     key={r}
                     onClick={() => setRole(r)}
+                    disabled={loading}
                     style={{
                       padding: "14px 16px",
                       borderRadius: "16px",
                       textAlign: "left",
                       background: isSelected ? rs.bg : "white",
                       border: isSelected ? `1.5px solid ${rs.border}` : "1px solid rgba(17,24,39,0.09)",
-                      cursor: "pointer",
+                      cursor: loading ? "not-allowed" : "pointer",
                       transition: "0.18s cubic-bezier(.2,.8,.2,1)",
                       boxShadow: isSelected ? "0 6px 18px rgba(15,23,42,0.08)" : "none",
+                      opacity: loading ? 0.7 : 1,
                     }}
                   >
                     <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
@@ -209,7 +238,7 @@ export function AddUserModal({ onClose, onSave }: AddUserModalProps) {
                           letterSpacing: "-0.02em",
                         }}
                       >
-                        {r}
+                        {r === "ADMIN" ? "Admin" : "Member"}
                       </span>
                     </div>
                     <div
@@ -229,7 +258,6 @@ export function AddUserModal({ onClose, onSave }: AddUserModalProps) {
             </div>
           </div>
 
-          {/* Permission preview */}
           <div>
             <label style={labelStyle}>Access Preview</label>
             <div
@@ -298,7 +326,6 @@ export function AddUserModal({ onClose, onSave }: AddUserModalProps) {
           </div>
         </div>
 
-        {/* Footer */}
         <div
           style={{
             padding: "16px 28px 24px",
@@ -312,7 +339,8 @@ export function AddUserModal({ onClose, onSave }: AddUserModalProps) {
           }}
         >
           <button
-            onClick={onClose}
+            onClick={loading ? undefined : onClose}
+            disabled={loading}
             style={{
               height: "44px",
               padding: "0 22px",
@@ -323,14 +351,16 @@ export function AddUserModal({ onClose, onSave }: AddUserModalProps) {
               color: "#182033",
               fontSize: "0.85rem",
               fontWeight: 700,
-              cursor: "pointer",
+              cursor: loading ? "not-allowed" : "pointer",
               letterSpacing: "-0.01em",
+              opacity: loading ? 0.7 : 1,
             }}
           >
             Cancel
           </button>
           <button
             onClick={handleSave}
+            disabled={loading}
             style={{
               height: "44px",
               padding: "0 22px",
@@ -338,7 +368,7 @@ export function AddUserModal({ onClose, onSave }: AddUserModalProps) {
               background: "linear-gradient(180deg, #fb7a18 0%, #ea580c 100%)",
               color: "white",
               border: "1px solid rgba(194,65,12,0.22)",
-              cursor: "pointer",
+              cursor: loading ? "not-allowed" : "pointer",
               fontSize: "0.85rem",
               fontWeight: 700,
               boxShadow: "0 12px 28px rgba(234,88,12,0.24), inset 0 1px 0 rgba(255,255,255,0.20)",
@@ -346,10 +376,11 @@ export function AddUserModal({ onClose, onSave }: AddUserModalProps) {
               display: "flex",
               alignItems: "center",
               gap: "7px",
+              opacity: loading ? 0.7 : 1,
             }}
           >
-            <Send size={15} />
-            Send Invitation
+            {loading ? <Loader2 size={15} className="animate-spin" /> : <Send size={15} />}
+            {loading ? "Sending..." : "Send Invitation"}
           </button>
         </div>
       </div>

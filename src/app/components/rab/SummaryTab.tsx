@@ -10,14 +10,12 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import {
-  rabCategories,
-  TOTAL_FUNDING,
   getCategoryRealization,
   getCategoryRemaining,
   getCategoryPct,
-  getTotalRealization,
   getUtilizationStatus,
   formatRp,
+  type RABCategory,
 } from "./rabData";
 import {
   TrendingUp,
@@ -57,70 +55,12 @@ function RpIcon({ color, bg, border }: { color: string; bg: string; border: stri
   );
 }
 
-const totalRealization = getTotalRealization();
-const totalRemaining = TOTAL_FUNDING - totalRealization;
-const overallPct = Math.round((totalRealization / TOTAL_FUNDING) * 100);
-
-const approvedItems = rabCategories.flatMap((c) => c.items).filter((i) => i.status === "Completed").length;
-const totalItems = rabCategories.flatMap((c) => c.items).length;
-
-const kpiCards = [
-  {
-    title: "Total Planned Budget",
-    value: formatRp(TOTAL_FUNDING),
-    icon: null as null,
-    iconColor: "#ea580c",
-    iconBg: "#fff7ed",
-    iconBorder: "rgba(249,115,22,0.18)",
-    badge: "P2MW 2025",
-    badgeColor: "#ea580c",
-    badgeBg: "rgba(249,115,22,0.09)",
-    note: "Full program allocation",
-  },
-  {
-    title: "Total Realization",
-    value: formatRp(totalRealization),
-    icon: TrendingUp as any,
-    iconColor: "#2563eb",
-    iconBg: "#eff6ff",
-    iconBorder: "rgba(37,99,235,0.18)",
-    badge: `${overallPct}% used`,
-    badgeColor: "#2563eb",
-    badgeBg: "rgba(37,99,235,0.09)",
-    note: "Actual spending to date",
-  },
-  {
-    title: "Remaining Budget",
-    value: formatRp(totalRemaining),
-    icon: Wallet as any,
-    iconColor: "#16a34a",
-    iconBg: "#f0fdf4",
-    iconBorder: "rgba(22,163,74,0.18)",
-    badge: `${100 - overallPct}% available`,
-    badgeColor: "#16a34a",
-    badgeBg: "rgba(22,163,74,0.09)",
-    note: "Unspent allocation",
-  },
-  {
-    title: "Items Approved",
-    value: `${approvedItems} / ${totalItems}`,
-    icon: CheckCircle2 as any,
-    iconColor: "#7c3aed",
-    iconBg: "#f5f3ff",
-    iconBorder: "rgba(124,58,237,0.18)",
-    badge: "Line Items",
-    badgeColor: "#7c3aed",
-    badgeBg: "rgba(124,58,237,0.09)",
-    note: `${totalItems - approvedItems} pending review`,
-  },
-];
-
-const chartData = rabCategories.map((cat) => ({
-  name: cat.name.split(" ").slice(0, 2).join(" "),
-  budget: cat.budget,
-  realization: getCategoryRealization(cat),
-  color: cat.color,
-}));
+interface SummaryTabProps {
+  rabCategories: RABCategory[];
+  totalBudget: number;
+  totalRealization: number;
+  isLoading: boolean;
+}
 
 const CustomBarTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
@@ -194,19 +134,103 @@ const CustomBarTooltip = ({ active, payload, label }: any) => {
   return null;
 };
 
-export function SummaryTab() {
+export function SummaryTab({ rabCategories, totalBudget, totalRealization, isLoading }: SummaryTabProps) {
   const [hoveredCard, setHoveredCard] = useState<number | null>(null);
+
+  const totalRemaining = totalBudget - totalRealization;
+  const overallPct = totalBudget > 0 ? Math.round((totalRealization / totalBudget) * 100) : 0;
+
+  const approvedItems = rabCategories.flatMap((c) => c.items).filter((i) => i.status === "Completed").length;
+  const totalItems = rabCategories.flatMap((c) => c.items).length;
+
+  const kpiCards = [
+    {
+      title: "Total Planned Budget",
+      value: formatRp(totalBudget),
+      icon: null as null,
+      iconColor: "#ea580c",
+      iconBg: "#fff7ed",
+      iconBorder: "rgba(249,115,22,0.18)",
+      badge: "P2MW 2026",
+      badgeColor: "#ea580c",
+      badgeBg: "rgba(249,115,22,0.09)",
+      note: "Full program allocation",
+    },
+    {
+      title: "Total Realization",
+      value: formatRp(totalRealization),
+      icon: TrendingUp as any,
+      iconColor: "#2563eb",
+      iconBg: "#eff6ff",
+      iconBorder: "rgba(37,99,235,0.18)",
+      badge: `${overallPct}% used`,
+      badgeColor: "#2563eb",
+      badgeBg: "rgba(37,99,235,0.09)",
+      note: "Actual spending to date",
+    },
+    {
+      title: "Remaining Budget",
+      value: formatRp(totalRemaining),
+      icon: Wallet as any,
+      iconColor: "#16a34a",
+      iconBg: "#f0fdf4",
+      iconBorder: "rgba(22,163,74,0.18)",
+      badge: `${100 - overallPct}% available`,
+      badgeColor: "#16a34a",
+      badgeBg: "rgba(22,163,74,0.09)",
+      note: "Unspent allocation",
+    },
+    {
+      title: "Items Completed",
+      value: `${approvedItems} / ${totalItems}`,
+      icon: CheckCircle2 as any,
+      iconColor: "#7c3aed",
+      iconBg: "#f5f3ff",
+      iconBorder: "rgba(124,58,237,0.18)",
+      badge: "Line Items",
+      badgeColor: "#7c3aed",
+      badgeBg: "rgba(124,58,237,0.09)",
+      note: `${totalItems - approvedItems} remaining`,
+    },
+  ];
+
+  const chartData = rabCategories.map((cat) => ({
+    name: cat.name.split(" ").slice(0, 2).join(" "),
+    budget: cat.budget,
+    realization: getCategoryRealization(cat),
+    color: cat.color,
+  }));
+
+  if (isLoading) {
+    return (
+      <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
+        {/* Skeleton KPI Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-[18px]">
+          {[1, 2, 3, 4].map((i) => (
+            <div
+              key={i}
+              style={{
+                padding: "22px",
+                borderRadius: "28px",
+                background: "#f8fafc",
+                border: "1px solid rgba(17,24,39,0.08)",
+                height: "160px",
+              }}
+            >
+              <div style={{ width: "44px", height: "44px", borderRadius: "16px", background: "#eef2f7", marginBottom: "20px" }} />
+              <div style={{ width: "60%", height: "12px", borderRadius: "6px", background: "#eef2f7", marginBottom: "8px" }} />
+              <div style={{ width: "80%", height: "20px", borderRadius: "8px", background: "#eef2f7" }} />
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
       {/* KPI Cards */}
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(4, minmax(0,1fr))",
-          gap: "18px",
-        }}
-      >
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-[18px]">
         {kpiCards.map((card, i) => {
           const Icon = card.icon;
           const isHov = hoveredCard === i;
@@ -322,14 +346,7 @@ export function SummaryTab() {
 
       {/* Category cards grid */}
       <div>
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            marginBottom: "16px",
-          }}
-        >
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
           <div>
             <div
               style={{
@@ -381,19 +398,13 @@ export function SummaryTab() {
           </div>
         </div>
 
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(5, minmax(0,1fr))",
-            gap: "16px",
-          }}
-        >
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
           {rabCategories.map((cat) => {
             const realization = getCategoryRealization(cat);
             const remaining = getCategoryRemaining(cat);
             const pct = getCategoryPct(cat);
             const statusInfo = getUtilizationStatus(pct);
-            const approvedCount = cat.items.filter((i) => i.status === "Completed").length;
+            const completedCount = cat.items.filter((i) => i.status === "Completed").length;
 
             return (
               <div
@@ -565,7 +576,7 @@ export function SummaryTab() {
                       fontWeight: 600,
                     }}
                   >
-                    {approvedCount}/{cat.items.length} approved
+                    {completedCount}/{cat.items.length} completed
                   </div>
                 </div>
               </div>
@@ -585,15 +596,7 @@ export function SummaryTab() {
           boxShadow: "0 18px 46px rgba(15,23,42,0.10)",
         }}
       >
-        <div
-          style={{
-            display: "flex",
-            alignItems: "flex-start",
-            justifyContent: "space-between",
-            gap: "16px",
-            marginBottom: "28px",
-          }}
-        >
+        <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 mb-7">
           <div>
             <div
               style={{
@@ -742,12 +745,8 @@ export function SummaryTab() {
 
       {/* Grand Total strip */}
       <div
+        className="grid grid-cols-2 lg:grid-cols-4 gap-y-6 lg:gap-[1px] p-5 lg:py-[22px] lg:px-[28px] rounded-[24px]"
         style={{
-          display: "grid",
-          gridTemplateColumns: "1fr 1fr 1fr 1fr",
-          gap: "1px",
-          padding: "22px 28px",
-          borderRadius: "24px",
           background:
             "radial-gradient(circle at 0% 50%, rgba(249,115,22,0.08), transparent 14rem), linear-gradient(135deg, #0c172b 0%, #12213a 100%)",
           border: "1px solid rgba(255,255,255,0.06)",
@@ -757,8 +756,8 @@ export function SummaryTab() {
         {[
           {
             label: "Total Budget",
-            value: formatRp(TOTAL_FUNDING),
-            sub: "5 categories",
+            value: formatRp(totalBudget),
+            sub: `${rabCategories.length} categories`,
             color: "rgba(255,255,255,0.9)",
           },
           {
@@ -776,16 +775,13 @@ export function SummaryTab() {
           {
             label: "Items Status",
             value: `${approvedItems}/${totalItems}`,
-            sub: "line items approved",
+            sub: "line items completed",
             color: "#a78bfa",
           },
         ].map((item, i) => (
           <div
             key={i}
-            style={{
-              padding: i > 0 ? "0 24px" : "0 24px 0 0",
-              borderLeft: i > 0 ? "1px solid rgba(255,255,255,0.08)" : "none",
-            }}
+            className={`px-2 lg:px-6 ${(i === 1 || i === 3) ? 'border-l border-white/10' : ''} ${i === 2 ? 'lg:border-l lg:border-white/10' : ''}`}
           >
             <div
               style={{

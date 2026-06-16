@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   X,
   Mail,
@@ -11,18 +11,22 @@ import {
   Edit3,
   Send,
   Ban,
+  Loader2,
 } from "lucide-react";
 import {
-  type AppUser,
   PERMISSIONS,
   getRoleStyle,
   getUserStatusStyle,
   getInitials,
   formatUserDate,
+  ROLE_PERMISSIONS,
 } from "./userData";
+import { UserProfile, disableUser } from "../../../services/user.service";
+import { supabase } from "../../../lib/supabase";
+import { toast } from "sonner";
 
 interface UserDrawerProps {
-  user: AppUser | null;
+  user: UserProfile | null;
   onClose: () => void;
 }
 
@@ -30,22 +34,55 @@ type DrawerTab = "profile" | "permissions" | "activity";
 
 export function UserDrawer({ user, onClose }: UserDrawerProps) {
   const [activeTab, setActiveTab] = useState<DrawerTab>("profile");
+  const [activities, setActivities] = useState<any[]>([]);
+  const [loadingActivities, setLoadingActivities] = useState(false);
+  const [actionLoading, setActionLoading] = useState(false);
+
+  useEffect(() => {
+    if (user && activeTab === "activity") {
+      loadActivities();
+    }
+  }, [user, activeTab]);
+
+  const loadActivities = async () => {
+    if (!user) return;
+    setLoadingActivities(true);
+    const { data } = await supabase
+      .from("activity_logs")
+      .select("*")
+      .eq("entity_id", user.id)
+      .order("created_at", { ascending: false });
+    
+    if (data) setActivities(data);
+    setLoadingActivities(false);
+  };
+
+  const handleDeactivate = async () => {
+    if (!user) return;
+    if (confirm(`Are you sure you want to deactivate ${user.full_name}?`)) {
+      setActionLoading(true);
+      // use a mock admin name for now or get from auth context
+      await disableUser(user.id, "Admin");
+      setActionLoading(false);
+      onClose();
+    }
+  };
 
   if (!user) return null;
 
   const roleStyle = getRoleStyle(user.role);
   const statusStyle = getUserStatusStyle(user.status);
-  const grantedCount = user.permissionKeys.length;
+  const grantedKeys = ROLE_PERMISSIONS[user.role];
+  const grantedCount = grantedKeys.length;
 
   const drawerTabs: { id: DrawerTab; label: string; count?: number }[] = [
     { id: "profile", label: "Profile" },
     { id: "permissions", label: "Permissions", count: grantedCount },
-    { id: "activity", label: "Activity", count: user.history.length },
+    { id: "activity", label: "Activity", count: activities.length || 0 },
   ];
 
   return (
     <>
-      {/* Backdrop */}
       <div
         onClick={onClose}
         style={{
@@ -57,24 +94,7 @@ export function UserDrawer({ user, onClose }: UserDrawerProps) {
         }}
       />
 
-      {/* Drawer panel */}
-      <div
-        style={{
-          position: "fixed",
-          top: 0,
-          right: 0,
-          bottom: 0,
-          width: "520px",
-          maxWidth: "100vw",
-          zIndex: 100,
-          background: "#fbf7ef",
-          boxShadow: "-8px 0 48px rgba(12,23,43,0.18)",
-          display: "flex",
-          flexDirection: "column",
-          overflowY: "auto",
-        }}
-      >
-        {/* Header */}
+      <div className="fixed top-0 right-0 bottom-0 w-[520px] max-w-[100vw] z-[100] bg-[#fbf7ef] shadow-[-8px_0_48px_rgba(12,23,43,0.18)] flex flex-col overflow-y-auto">
         <div
           style={{
             padding: "20px 24px 0",
@@ -85,7 +105,6 @@ export function UserDrawer({ user, onClose }: UserDrawerProps) {
             zIndex: 10,
           }}
         >
-          {/* Top bar */}
           <div
             style={{
               display: "flex",
@@ -106,7 +125,7 @@ export function UserDrawer({ user, onClose }: UserDrawerProps) {
                   letterSpacing: "0.04em",
                 }}
               >
-                {user.id}
+                {user.id.slice(0, 8)}...
               </div>
               <div
                 style={{
@@ -135,6 +154,7 @@ export function UserDrawer({ user, onClose }: UserDrawerProps) {
             </div>
             <div style={{ display: "flex", gap: "8px" }}>
               <button
+                onClick={() => toast.info('Feature under construction 🚧')}
                 style={{
                   width: "34px",
                   height: "34px",
@@ -173,7 +193,6 @@ export function UserDrawer({ user, onClose }: UserDrawerProps) {
             </div>
           </div>
 
-          {/* Identity hero */}
           <div
             style={{
               padding: "20px 22px",
@@ -206,7 +225,7 @@ export function UserDrawer({ user, onClose }: UserDrawerProps) {
                 boxShadow: "0 10px 22px rgba(249,115,22,0.20)",
               }}
             >
-              {getInitials(user.name)}
+              {getInitials(user.full_name || "??")}
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div
@@ -219,7 +238,7 @@ export function UserDrawer({ user, onClose }: UserDrawerProps) {
                   lineHeight: 1.1,
                 }}
               >
-                {user.name}
+                {user.full_name}
               </div>
               <div
                 style={{
@@ -256,7 +275,6 @@ export function UserDrawer({ user, onClose }: UserDrawerProps) {
             </div>
           </div>
 
-          {/* Tab bar */}
           <div
             style={{
               display: "flex",
@@ -322,15 +340,12 @@ export function UserDrawer({ user, onClose }: UserDrawerProps) {
           <div style={{ height: "1px", background: "rgba(17,24,39,0.07)", marginTop: "16px" }} />
         </div>
 
-        {/* Body */}
         <div style={{ padding: "20px 24px 32px", flex: 1 }}>
-          {/* PROFILE TAB */}
           {activeTab === "profile" && (
             <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-              {/* Stat tiles */}
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
                 {[
-                  { label: "Transactions", value: String(user.txnCount), accent: "#ea580c" },
+                  { label: "Transactions", value: "?", accent: "#ea580c" },
                   { label: "Permissions", value: `${grantedCount} / ${PERMISSIONS.length}`, accent: "#2563eb" },
                 ].map((tile) => (
                   <div
@@ -373,9 +388,9 @@ export function UserDrawer({ user, onClose }: UserDrawerProps) {
 
               {[
                 { icon: Mail, label: "Email Address", value: user.email },
-                { icon: Briefcase, label: "Position", value: user.position },
-                { icon: Calendar, label: "Joined", value: formatUserDate(user.joinDate) },
-                { icon: Clock, label: "Last Active", value: formatUserDate(user.lastActive) },
+                { icon: Briefcase, label: "Position", value: user.position || "N/A" },
+                { icon: Calendar, label: "Joined", value: formatUserDate(user.created_at) },
+                { icon: Clock, label: "Last Active", value: formatUserDate(user.last_active_at) },
               ].map((field) => (
                 <div
                   key={field.label}
@@ -436,9 +451,9 @@ export function UserDrawer({ user, onClose }: UserDrawerProps) {
                 </div>
               ))}
 
-              {/* Quick actions */}
               <div style={{ display: "flex", gap: "10px", marginTop: "4px" }}>
                 <button
+                  onClick={() => toast.info('Feature under construction 🚧')}
                   style={{
                     flex: 1,
                     display: "flex",
@@ -459,6 +474,8 @@ export function UserDrawer({ user, onClose }: UserDrawerProps) {
                   Send Reset Link
                 </button>
                 <button
+                  onClick={handleDeactivate}
+                  disabled={actionLoading || user.status === "INACTIVE"}
                   style={{
                     flex: 1,
                     display: "flex",
@@ -472,17 +489,17 @@ export function UserDrawer({ user, onClose }: UserDrawerProps) {
                     color: "#dc2626",
                     fontSize: "0.83rem",
                     fontWeight: 700,
-                    cursor: "pointer",
+                    cursor: (actionLoading || user.status === "INACTIVE") ? "not-allowed" : "pointer",
+                    opacity: (actionLoading || user.status === "INACTIVE") ? 0.5 : 1,
                   }}
                 >
-                  <Ban size={14} />
-                  {user.status === "Inactive" ? "Reactivate" : "Deactivate"}
+                  {actionLoading ? <Loader2 size={14} className="animate-spin" /> : <Ban size={14} />}
+                  {user.status === "INACTIVE" ? "Deactivated" : "Deactivate"}
                 </button>
               </div>
             </div>
           )}
 
-          {/* PERMISSIONS TAB */}
           {activeTab === "permissions" && (
             <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
               <div
@@ -500,14 +517,14 @@ export function UserDrawer({ user, onClose }: UserDrawerProps) {
                 <ShieldCheck size={16} strokeWidth={2.2} style={{ color: roleStyle.color, flexShrink: 0 }} />
                 <div style={{ fontSize: "0.78rem", color: "#34435d", fontWeight: 600, lineHeight: 1.45 }}>
                   Access is derived from the <strong style={{ color: roleStyle.color }}>{user.role}</strong> role.
-                  {user.role === "Admin"
+                  {user.role === "ADMIN"
                     ? " Full access across the workspace."
                     : " Scoped to day-to-day financial operations."}
                 </div>
               </div>
 
               {PERMISSIONS.map((perm) => {
-                const granted = user.permissionKeys.includes(perm.key);
+                const granted = grantedKeys.includes(perm.key);
                 return (
                   <div
                     key={perm.key}
@@ -567,7 +584,6 @@ export function UserDrawer({ user, onClose }: UserDrawerProps) {
             </div>
           )}
 
-          {/* ACTIVITY TAB */}
           {activeTab === "activity" && (
             <div style={{ position: "relative" }}>
               <div
@@ -582,78 +598,88 @@ export function UserDrawer({ user, onClose }: UserDrawerProps) {
                 }}
               />
               <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-                {user.history.map((item, i) => (
-                  <div
-                    key={item.id}
-                    style={{
-                      display: "grid",
-                      gridTemplateColumns: "32px minmax(0,1fr)",
-                      gap: "12px",
-                      alignItems: "flex-start",
-                    }}
-                  >
+                {loadingActivities ? (
+                  <div className="flex justify-center p-8">
+                    <Loader2 className="animate-spin text-orange-500" />
+                  </div>
+                ) : activities.length === 0 ? (
+                  <div className="pl-10 py-4 text-sm font-semibold text-slate-500">
+                    No activity found.
+                  </div>
+                ) : (
+                  activities.map((item, i) => (
                     <div
+                      key={item.id}
                       style={{
-                        width: "32px",
-                        height: "32px",
-                        borderRadius: "11px",
-                        background: i === 0 ? "#fff7ed" : "#f8fafc",
-                        border: i === 0 ? "1px solid rgba(249,115,22,0.20)" : "1px solid rgba(17,24,39,0.07)",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        position: "relative",
-                        zIndex: 1,
-                        flexShrink: 0,
+                        display: "grid",
+                        gridTemplateColumns: "32px minmax(0,1fr)",
+                        gap: "12px",
+                        alignItems: "flex-start",
                       }}
                     >
                       <div
                         style={{
-                          width: "8px",
-                          height: "8px",
-                          borderRadius: "999px",
-                          background: i === 0 ? "#f97316" : "#c9d0da",
-                        }}
-                      />
-                    </div>
-                    <div
-                      style={{
-                        padding: "11px 14px",
-                        borderRadius: "14px",
-                        background: "white",
-                        border: "1px solid rgba(17,24,39,0.07)",
-                        boxShadow: "0 4px 12px rgba(15,23,42,0.04)",
-                      }}
-                    >
-                      <div
-                        style={{
-                          fontSize: "0.82rem",
-                          fontWeight: 700,
-                          color: "#182033",
-                          letterSpacing: "-0.015em",
-                          lineHeight: 1.3,
+                          width: "32px",
+                          height: "32px",
+                          borderRadius: "11px",
+                          background: i === 0 ? "#fff7ed" : "#f8fafc",
+                          border: i === 0 ? "1px solid rgba(249,115,22,0.20)" : "1px solid rgba(17,24,39,0.07)",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          position: "relative",
+                          zIndex: 1,
+                          flexShrink: 0,
                         }}
                       >
-                        {item.action}
-                      </div>
-                      <div style={{ display: "flex", alignItems: "center", gap: "10px", marginTop: "5px" }}>
-                        <span
+                        <div
                           style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: "4px",
-                            fontSize: "0.72rem",
-                            color: "#737f91",
-                            fontWeight: 600,
+                            width: "8px",
+                            height: "8px",
+                            borderRadius: "999px",
+                            background: i === 0 ? "#f97316" : "#c9d0da",
+                          }}
+                        />
+                      </div>
+                      <div
+                        style={{
+                          padding: "11px 14px",
+                          borderRadius: "14px",
+                          background: "white",
+                          border: "1px solid rgba(17,24,39,0.07)",
+                          boxShadow: "0 4px 12px rgba(15,23,42,0.04)",
+                        }}
+                      >
+                        <div
+                          style={{
+                            fontSize: "0.82rem",
+                            fontWeight: 700,
+                            color: "#182033",
+                            letterSpacing: "-0.015em",
+                            lineHeight: 1.3,
                           }}
                         >
-                          <Clock size={10} />
-                          {formatUserDate(item.date)} · {item.time}
-                        </span>
+                          {item.action}
+                        </div>
+                        <div style={{ display: "flex", alignItems: "center", gap: "10px", marginTop: "5px" }}>
+                          <span
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "4px",
+                              fontSize: "0.72rem",
+                              color: "#737f91",
+                              fontWeight: 600,
+                            }}
+                          >
+                            <Clock size={10} />
+                            {formatUserDate(item.created_at)}
+                          </span>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  ))
+                )}
               </div>
             </div>
           )}

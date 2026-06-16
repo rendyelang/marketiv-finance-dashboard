@@ -1,10 +1,13 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
+import { useLocation } from "react-router";
 import { TopNav } from "./TopNav";
 import { SummaryTab } from "./rab/SummaryTab";
 import { DetailedRABTab } from "./rab/DetailedRABTab";
 import { RealizationTab } from "./rab/RealizationTab";
-import { getTotalRealization, TOTAL_FUNDING, formatRp } from "./rab/rabData";
-import { Download, FileText, BarChart2 } from "lucide-react";
+import { getTotalRealization, formatRp } from "./rab/rabData";
+import { Plus, Search, ChevronDown, Download, FileText } from "lucide-react";
+import { toast } from "sonner";
+import { fetchRABData, type RABCategoryView } from "../../services/budget.service";
 
 type TabId = "summary" | "detailed" | "realization";
 
@@ -14,50 +17,92 @@ const tabs: { id: TabId; label: string; desc: string }[] = [
   { id: "realization", label: "Realization", desc: "Planned vs actual spending" },
 ];
 
-const totalRealization = getTotalRealization();
-const overallPct = Math.round((totalRealization / TOTAL_FUNDING) * 100);
+interface RABPageProps {
+  onMenuClick?: () => void;
+}
 
-export function RABPage() {
+export function RABPage({ onMenuClick }: RABPageProps) {
+  const location = useLocation();
   const [activeTab, setActiveTab] = useState<TabId>("summary");
+  
+  // Extract target category from navigation state
+  const targetCategoryId = location.state?.targetCategoryId as string | undefined;
+
+  const [categories, setCategories] = useState<RABCategoryView[]>([]);
+  const [totalBudget, setTotalBudget] = useState(0);
+  const [totalRealization, setTotalRealizationVal] = useState(0);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const loadData = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    const result = await fetchRABData();
+    if (result.error) {
+      setError(result.error);
+    } else {
+      setCategories(result.categories);
+      setTotalBudget(result.totalBudget);
+      setTotalRealizationVal(result.totalRealization);
+    }
+    setIsLoading(false);
+  }, []);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  // Auto-switch to detailed tab if target category is provided
+  useEffect(() => {
+    if (targetCategoryId) {
+      setActiveTab("detailed");
+    }
+  }, [targetCategoryId]);
+
+  const overallPct = totalBudget > 0 ? Math.round((totalRealization / totalBudget) * 100) : 0;
+
+  // Map RABCategoryView[] to the RABCategory[] shape expected by child components
+  const rabCategories = categories.map((cat) => ({
+    id: cat.id,
+    name: cat.name,
+    budget: cat.budget,
+    color: cat.color,
+    lightColor: cat.lightColor,
+    borderColor: cat.borderColor,
+    items: cat.items.map((item) => ({
+      id: item.id,
+      mainActivity: item.mainActivity,
+      activity: item.activity,
+      itemType: "",
+      qty: item.qty,
+      unit: item.unit,
+      unitPrice: item.unitPrice,
+      totalAmount: item.totalAmount,
+      targetOutput: item.targetOutput,
+      pic: item.pic,
+      status: item.status,
+      usedAmount: item.usedAmount,
+      justification: "",
+      referenceUrl: item.referenceUrl,
+      activity_id: item.activity_id,
+    })),
+  }));
 
   return (
-    <div
-      style={{
-        flex: 1,
-        display: "flex",
-        flexDirection: "column",
-        minWidth: 0,
-        maxHeight: "100vh",
-        overflowY: "auto",
-      }}
-    >
+    <div className="flex-1 flex flex-col min-w-0 max-h-screen overflow-y-auto">
       <TopNav
         title="Rencana Anggaran Biaya"
-        subtitle="P2MW 2025 Budget Planning & Realization"
+        subtitle="P2MW 2026 Budget Planning & Realization"
+        onMenuClick={onMenuClick}
       />
 
-      <main
-        style={{
-          flex: 1,
-          padding: "28px 32px 48px",
-          display: "flex",
-          flexDirection: "column",
-          gap: "24px",
-        }}
-      >
+      <main className="flex-1 p-4 md:p-6 lg:px-8 lg:py-7 flex flex-col gap-6">
         {/* Page hero header */}
         <div
+          className="p-6 lg:p-8 rounded-[32px] border border-white/5 shadow-[0_18px_46px_rgba(12,23,43,0.22)] flex flex-col lg:flex-row lg:items-start justify-between gap-6"
           style={{
-            padding: "28px 32px",
-            borderRadius: "32px",
             background:
               "radial-gradient(circle at 100% 0%, rgba(249,115,22,0.10), transparent 20rem), linear-gradient(135deg, #0c172b 0%, #12213a 60%, #1e3a5f 100%)",
-            border: "1px solid rgba(255,255,255,0.06)",
-            boxShadow: "0 18px 46px rgba(12,23,43,0.22)",
-            display: "flex",
-            alignItems: "flex-start",
-            justifyContent: "space-between",
-            gap: "24px",
           }}
         >
           <div style={{ flex: 1 }}>
@@ -75,16 +120,16 @@ export function RABPage() {
               Rencana Anggaran Biaya
             </div>
             <div style={{ color: "rgba(255,255,255,0.50)", fontSize: "0.88rem", fontWeight: 500, maxWidth: "520px", lineHeight: 1.55 }}>
-              Complete budget planning and realization tracking for Marketiv P2MW 2025 program.
+              Complete budget planning and realization tracking for Marketiv P2MW 2026 program.
               Manage allocations, track spending, and ensure financial transparency.
             </div>
 
             {/* Quick stats */}
-            <div style={{ display: "flex", gap: "24px", marginTop: "20px" }}>
+            <div className="flex flex-wrap gap-4 lg:gap-6 mt-5">
               {[
-                { label: "Total Budget", value: formatRp(TOTAL_FUNDING), color: "rgba(255,255,255,0.9)" },
-                { label: "Realized", value: formatRp(totalRealization), color: "#fb923c" },
-                { label: "Utilization", value: `${overallPct}%`, color: "#4ade80" },
+                { label: "Total Budget", value: isLoading ? "Loading..." : formatRp(totalBudget), color: "rgba(255,255,255,0.9)" },
+                { label: "Realized", value: isLoading ? "Loading..." : formatRp(totalRealization), color: "#fb923c" },
+                { label: "Utilization", value: isLoading ? "..." : `${overallPct}%`, color: "#4ade80" },
               ].map((stat) => (
                 <div key={stat.label}>
                   <div
@@ -117,16 +162,9 @@ export function RABPage() {
           </div>
 
           {/* Right: Action buttons */}
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              gap: "10px",
-              flexShrink: 0,
-              alignItems: "flex-end",
-            }}
-          >
+          <div className="flex flex-row lg:flex-col gap-2.5 shrink-0 w-full lg:w-auto lg:items-end">
             <button
+              onClick={() => toast.info('Feature under construction 🚧')}
               style={{
                 display: "flex",
                 alignItems: "center",
@@ -150,6 +188,7 @@ export function RABPage() {
               Export PDF
             </button>
             <button
+              onClick={() => toast.info('Feature under construction 🚧')}
               style={{
                 display: "flex",
                 alignItems: "center",
@@ -175,19 +214,10 @@ export function RABPage() {
         </div>
 
         {/* Tab navigation */}
-        <div
-          style={{
-            display: "flex",
-            gap: "6px",
-            padding: "6px",
-            borderRadius: "20px",
-            background: "rgba(255,255,255,0.72)",
-            border: "1px solid rgba(17,24,39,0.08)",
-            boxShadow: "0 8px 24px rgba(15,23,42,0.06)",
-            backdropFilter: "blur(18px)",
-            alignSelf: "flex-start",
-          }}
-        >
+        <div className="overflow-x-auto w-full lg:w-auto self-start pb-2 lg:pb-0 -mx-4 px-4 lg:mx-0 lg:px-0">
+          <div
+            className="inline-flex gap-1.5 p-1.5 rounded-[20px] bg-white/72 border border-slate-900/5 shadow-[0_8px_24px_rgba(15,23,42,0.06)] backdrop-blur-[18px]"
+          >
           {tabs.map((tab) => {
             const isActive = activeTab === tab.id;
             return (
@@ -242,12 +272,53 @@ export function RABPage() {
               </button>
             );
           })}
+          </div>
         </div>
 
+        {/* Error state */}
+        {error && (
+          <div
+            style={{
+              padding: "16px 20px",
+              borderRadius: "16px",
+              background: "rgba(220,38,38,0.06)",
+              border: "1px solid rgba(220,38,38,0.18)",
+              color: "#dc2626",
+              fontSize: "0.85rem",
+              fontWeight: 600,
+            }}
+          >
+            Failed to load budget data: {error}
+          </div>
+        )}
+
         {/* Tab content */}
-        {activeTab === "summary" && <SummaryTab />}
-        {activeTab === "detailed" && <DetailedRABTab />}
-        {activeTab === "realization" && <RealizationTab />}
+        {activeTab === "summary" && (
+          <SummaryTab
+            rabCategories={rabCategories}
+            totalBudget={totalBudget}
+            totalRealization={totalRealization}
+            isLoading={isLoading}
+          />
+        )}
+        {activeTab === "detailed" && (
+          <DetailedRABTab
+            rabCategories={rabCategories}
+            totalBudget={totalBudget}
+            totalRealization={totalRealization}
+            isLoading={isLoading}
+            onDataChange={loadData}
+            targetCategoryId={targetCategoryId}
+          />
+        )}
+        {activeTab === "realization" && (
+          <RealizationTab
+            rabCategories={rabCategories}
+            totalBudget={totalBudget}
+            totalRealization={totalRealization}
+            isLoading={isLoading}
+          />
+        )}
       </main>
     </div>
   );

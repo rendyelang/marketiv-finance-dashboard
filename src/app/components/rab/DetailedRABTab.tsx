@@ -1,23 +1,31 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
-  rabCategories,
   getCategoryRealization,
-  getTotalRealization,
-  TOTAL_FUNDING,
   getStatusStyle,
   formatRp,
   type RABItem,
+  type RABCategory,
   type ApprovalStatus,
 } from "./rabData";
-import { Search, Plus, Filter, ChevronDown, ChevronUp, Edit3, Trash2 } from "lucide-react";
+import { Search, Plus, Filter, ChevronDown, ChevronUp, Edit3, Trash2, Eye, ExternalLink } from "lucide-react";
+import { useAuth } from "../../contexts/AuthContext";
+import { AddBudgetItemModal } from "./AddBudgetItemModal";
+import { deleteBudgetItem } from "../../../services/budget.service";
+import { toast } from "sonner";
+import {
+  Drawer,
+  DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerClose,
+} from "../ui/drawer";
 
 const COL_GRID =
-  "36px minmax(180px,2.2fr) 92px 64px 124px 124px minmax(110px,1.1fr) 106px 110px 124px minmax(100px,1fr)";
+  "36px minmax(200px,2.5fr) 70px 130px 130px minmax(110px,1.2fr) 110px 110px 130px";
 
 const COL_HEADERS = [
   "#",
   "Activity",
-  "Type",
   "Qty",
   "Unit Price",
   "Total",
@@ -25,7 +33,6 @@ const COL_HEADERS = [
   "PIC",
   "Status",
   "Used",
-  "Justification",
 ];
 
 function TypeBadge({ type }: { type: string }) {
@@ -134,10 +141,18 @@ function ItemRow({
   item,
   index,
   catColor,
+  isAdmin,
+  onEdit,
+  onDelete,
+  onViewDetail,
 }: {
   item: RABItem;
   index: number;
   catColor: string;
+  isAdmin: boolean;
+  onEdit: () => void;
+  onDelete: () => void;
+  onViewDetail: () => void;
 }) {
   const [hovered, setHovered] = useState(false);
   const remaining = item.totalAmount - item.usedAmount;
@@ -203,10 +218,7 @@ function ItemRow({
         </div>
       </div>
 
-      {/* Type */}
-      <div style={{ overflow: "hidden" }}>
-        <TypeBadge type={item.itemType} />
-      </div>
+      {/* Type Removed */}
 
       {/* Qty */}
       <div
@@ -356,20 +368,7 @@ function ItemRow({
         )}
       </div>
 
-      {/* Justification */}
-      <div
-        style={{
-          fontSize: "0.78rem",
-          color: "#737f91",
-          fontWeight: 500,
-          overflow: "hidden",
-          textOverflow: "ellipsis",
-          whiteSpace: "nowrap",
-        }}
-        title={item.justification}
-      >
-        {item.justification}
-      </div>
+      {/* Justification Removed */}
 
       {/* Hover actions */}
       {hovered && (
@@ -390,6 +389,7 @@ function ItemRow({
           }}
         >
           <button
+            onClick={onViewDetail}
             style={{
               width: "28px",
               height: "28px",
@@ -402,25 +402,48 @@ function ItemRow({
               justifyContent: "center",
               color: "#556174",
             }}
+            title="View Details"
           >
-            <Edit3 size={13} />
+            <Eye size={13} />
           </button>
-          <button
-            style={{
-              width: "28px",
-              height: "28px",
-              borderRadius: "8px",
-              background: "rgba(220,38,38,0.07)",
-              border: "none",
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              color: "#dc2626",
-            }}
-          >
-            <Trash2 size={13} />
-          </button>
+          {isAdmin && (
+            <>
+              <button
+                onClick={onEdit}
+                style={{
+                  width: "28px",
+                  height: "28px",
+                  borderRadius: "8px",
+                  background: "#f3f5f8",
+                  border: "none",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  color: "#556174",
+                }}
+              >
+                <Edit3 size={13} />
+              </button>
+              <button
+                onClick={onDelete}
+                style={{
+                  width: "28px",
+                  height: "28px",
+                  borderRadius: "8px",
+                  background: "rgba(220,38,38,0.07)",
+                  border: "none",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  color: "#dc2626",
+                }}
+              >
+                <Trash2 size={13} />
+              </button>
+            </>
+          )}
         </div>
       )}
     </div>
@@ -466,7 +489,6 @@ function SubtotalRow({
       </div>
       <div />
       <div />
-      <div />
       <div
         style={{
           fontFamily: "'Sora', sans-serif",
@@ -483,7 +505,7 @@ function SubtotalRow({
           display: "flex",
           alignItems: "center",
           gap: "8px",
-          gridColumn: "7 / 10",
+          gridColumn: "6 / 9",
         }}
       >
         <div style={{ flex: 1, height: "6px", borderRadius: "999px", background: "#eef2f7", overflow: "hidden" }}>
@@ -508,39 +530,77 @@ function SubtotalRow({
           {pct}%
         </span>
       </div>
-      <div
-        style={{
-          fontFamily: "'Sora', sans-serif",
-          fontSize: "0.88rem",
-          fontWeight: 800,
-          color: "#182033",
-          letterSpacing: "-0.03em",
-        }}
-      >
-        {formatRp(used)}
-      </div>
-      <div
-        style={{
-          fontSize: "0.80rem",
-          fontWeight: 700,
-          color: "#16a34a",
-          letterSpacing: "-0.02em",
-          fontFamily: "'Sora', sans-serif",
-        }}
-      >
-        {formatRp(remaining)} left
+      <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+        <div
+          style={{
+            fontFamily: "'Sora', sans-serif",
+            fontSize: "0.88rem",
+            fontWeight: 800,
+            color: "#182033",
+            letterSpacing: "-0.03em",
+          }}
+        >
+          {formatRp(used)}
+        </div>
+        <div
+          style={{
+            fontSize: "0.75rem",
+            fontWeight: 700,
+            color: "#16a34a",
+            letterSpacing: "-0.02em",
+            fontFamily: "'Sora', sans-serif",
+          }}
+        >
+          {formatRp(remaining)} left
+        </div>
       </div>
     </div>
   );
 }
 
-export function DetailedRABTab() {
+interface DetailedRABTabProps {
+  rabCategories: RABCategory[];
+  totalBudget: number;
+  totalRealization: number;
+  isLoading: boolean;
+  onDataChange: () => void;
+  targetCategoryId?: string;
+}
+
+export function DetailedRABTab({ rabCategories, totalBudget, totalRealization, isLoading, onDataChange, targetCategoryId }: DetailedRABTabProps) {
   const [search, setSearch] = useState("");
   const [collapsedCats, setCollapsedCats] = useState<Set<string>>(new Set());
   const [filterStatus, setFilterStatus] = useState<ApprovalStatus | "All">("All");
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [addModalCategoryId, setAddModalCategoryId] = useState<string | undefined>();
+  const [editItemData, setEditItemData] = useState<(RABItem & { categoryId: string }) | null>(null);
+  const [viewItemDetail, setViewItemDetail] = useState<RABItem | null>(null);
+  const { profile } = useAuth();
+  const isAdmin = profile?.role === "ADMIN";
 
-  const totalRealization = getTotalRealization();
-  const totalPct = Math.round((totalRealization / TOTAL_FUNDING) * 100);
+  const totalPct = totalBudget > 0 ? Math.round((totalRealization / totalBudget) * 100) : 0;
+
+  useEffect(() => {
+    if (!isLoading && targetCategoryId) {
+      setTimeout(() => {
+        const el = document.getElementById(`category-${targetCategoryId}`);
+        if (el) {
+          el.scrollIntoView({ behavior: "smooth", block: "center" });
+          el.style.transition = "box-shadow 0.3s ease-in-out";
+          el.style.boxShadow = "0 0 0 3px rgba(249,115,22,0.5), 0 8px 24px rgba(15,23,42,0.12)";
+          setTimeout(() => {
+            el.style.boxShadow = "0 8px 24px rgba(15,23,42,0.06)";
+          }, 2500);
+
+          setCollapsedCats((prev) => {
+            const next = new Set(prev);
+            next.delete(targetCategoryId);
+            return next;
+          });
+        }
+      }, 100);
+    }
+  }, [isLoading, targetCategoryId]);
 
   const toggleCollapse = (id: string) => {
     setCollapsedCats((prev) => {
@@ -548,6 +608,17 @@ export function DetailedRABTab() {
       next.has(id) ? next.delete(id) : next.add(id);
       return next;
     });
+  };
+
+  const handleDeleteItem = async (id: string) => {
+    if (!window.confirm("Are you sure you want to delete this budget item?")) return;
+    const { success, error } = await deleteBudgetItem(id);
+    if (success) {
+      toast.success("Budget item deleted");
+      onDataChange();
+    } else {
+      toast.error(error || "Failed to delete item");
+    }
   };
 
   const filteredCategories = rabCategories.map((cat) => ({
@@ -563,23 +634,23 @@ export function DetailedRABTab() {
     }),
   }));
 
+  if (isLoading) {
+    return (
+      <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+        {[1, 2, 3].map((i) => (
+          <div key={i} style={{ height: "120px", borderRadius: "28px", background: "#f8fafc", border: "1px solid rgba(17,24,39,0.08)" }} />
+        ))}
+      </div>
+    );
+  }
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
       {/* Toolbar */}
       <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: "12px",
-          padding: "14px 16px",
-          borderRadius: "20px",
-          background: "white",
-          border: "1px solid rgba(17,24,39,0.08)",
-          boxShadow: "0 8px 24px rgba(15,23,42,0.06)",
-        }}
+        className="flex flex-col xl:flex-row xl:items-center justify-between gap-3 p-3.5 px-4 rounded-[20px] bg-white border border-slate-900/5 shadow-[0_8px_24px_rgba(15,23,42,0.06)]"
       >
-        <div style={{ display: "flex", alignItems: "center", gap: "10px", flex: 1 }}>
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2.5 flex-1">
           {/* Search */}
           <div
             style={{
@@ -617,7 +688,7 @@ export function DetailedRABTab() {
           </div>
 
           {/* Status filter */}
-          <div style={{ display: "flex", gap: "6px" }}>
+          <div className="flex flex-wrap gap-1.5">
             {(["All", "Planned", "In Progress", "Completed"] as const).map((s) => (
               <button
                 key={s}
@@ -668,7 +739,9 @@ export function DetailedRABTab() {
         </div>
 
         {/* Right: Add button */}
+        {isAdmin && (
         <button
+          onClick={() => { setAddModalCategoryId(undefined); setShowAddModal(true); }}
           style={{
             display: "flex",
             alignItems: "center",
@@ -691,6 +764,7 @@ export function DetailedRABTab() {
           <Plus size={15} />
           Add Budget Item
         </button>
+        )}
       </div>
 
       {/* Category groups */}
@@ -704,6 +778,7 @@ export function DetailedRABTab() {
         return (
           <div
             key={cat.id}
+            id={`category-${cat.id}`}
             style={{
               borderRadius: "28px",
               background: "white",
@@ -715,17 +790,13 @@ export function DetailedRABTab() {
             {/* Category header */}
             <div
               onClick={() => toggleCollapse(cat.id)}
+              className="flex flex-col sm:flex-row sm:items-center gap-4 p-5 px-6 cursor-pointer select-none"
               style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "16px",
-                padding: "20px 24px",
                 background: `linear-gradient(135deg, ${cat.lightColor}, white)`,
                 borderBottom: isCollapsed ? "none" : "1px solid rgba(17,24,39,0.07)",
-                cursor: "pointer",
-                userSelect: "none",
               }}
             >
+              <div className="flex items-center gap-4 flex-1 min-w-0">
               {/* Color badge */}
               <div
                 style={{
@@ -751,7 +822,7 @@ export function DetailedRABTab() {
               </div>
 
               {/* Category info */}
-              <div style={{ flex: 1, minWidth: 0 }}>
+              <div className="flex-1 min-w-0">
                 <div
                   style={{
                     fontFamily: "'Sora', 'Plus Jakarta Sans', sans-serif",
@@ -776,6 +847,7 @@ export function DetailedRABTab() {
                   {cat.items.filter((i) => i.status === "Completed").length} completed ·{" "}
                   {cat.items.filter((i) => i.status === "Planned").length} planned
                 </div>
+              </div>
               </div>
 
               {/* Budget/Realization */}
@@ -866,22 +938,32 @@ export function DetailedRABTab() {
 
             {/* Items */}
             {!isCollapsed && (
-              <div style={{ padding: "16px 20px 20px" }}>
-                <TableHeader />
-                <div style={{ display: "flex", flexDirection: "column", gap: "5px" }}>
-                  {cat.items.map((item, idx) => (
-                    <ItemRow
-                      key={item.id}
-                      item={item}
-                      index={idx}
-                      catColor={cat.color}
-                    />
-                  ))}
+              <div className="p-4 md:p-5 lg:pb-5">
+                <div className="overflow-x-auto w-full pb-2">
+                  <div className="min-w-[1000px]">
+                    <TableHeader />
+                    <div style={{ display: "flex", flexDirection: "column", gap: "5px" }}>
+                      {cat.items.map((item, idx) => (
+                        <ItemRow
+                          key={item.id}
+                          item={item}
+                          index={idx}
+                          catColor={cat.color}
+                          isAdmin={isAdmin}
+                          onEdit={() => setEditItemData({ ...item, categoryId: cat.id })}
+                          onDelete={() => handleDeleteItem(item.id)}
+                          onViewDetail={() => setViewItemDetail(item)}
+                        />
+                      ))}
+                    </div>
+                    <SubtotalRow budget={cat.budget} used={realization} color={cat.color} />
+                  </div>
                 </div>
-                <SubtotalRow budget={cat.budget} used={realization} color={cat.color} />
 
                 {/* Add item row */}
+                {isAdmin && (
                 <button
+                  onClick={() => { setAddModalCategoryId(cat.id); setShowAddModal(true); }}
                   style={{
                     display: "flex",
                     alignItems: "center",
@@ -903,6 +985,7 @@ export function DetailedRABTab() {
                   <Plus size={13} />
                   Add item to {cat.name}
                 </button>
+                )}
               </div>
             )}
           </div>
@@ -911,16 +994,10 @@ export function DetailedRABTab() {
 
       {/* Grand Total */}
       <div
+        className="p-6 md:p-7 rounded-[28px] border border-white/5 shadow-[0_18px_46px_rgba(12,23,43,0.22)] flex flex-col md:flex-row md:items-center gap-7"
         style={{
-          padding: "24px 28px",
-          borderRadius: "28px",
           background:
             "radial-gradient(circle at 0% 50%, rgba(249,115,22,0.10), transparent 14rem), linear-gradient(135deg, #0c172b 0%, #12213a 100%)",
-          border: "1px solid rgba(255,255,255,0.05)",
-          boxShadow: "0 18px 46px rgba(12,23,43,0.22)",
-          display: "flex",
-          alignItems: "center",
-          gap: "28px",
         }}
       >
         <div style={{ flex: 1 }}>
@@ -946,7 +1023,7 @@ export function DetailedRABTab() {
               lineHeight: 1,
             }}
           >
-            {formatRp(TOTAL_FUNDING)}
+            {formatRp(totalBudget)}
           </div>
           <div
             style={{
@@ -1037,7 +1114,7 @@ export function DetailedRABTab() {
               lineHeight: 1,
             }}
           >
-            {formatRp(TOTAL_FUNDING - totalRealization)}
+            {formatRp(totalBudget - totalRealization)}
           </div>
           <div
             style={{
@@ -1093,6 +1170,129 @@ export function DetailedRABTab() {
           </div>
         </div>
       </div>
+
+      {/* Add Budget Item Modal */}
+      {(showAddModal || editItemData) && (
+        <AddBudgetItemModal
+          onClose={() => {
+            setShowAddModal(false);
+            setEditItemData(null);
+          }}
+          onSuccess={() => {
+            setShowAddModal(false);
+            setEditItemData(null);
+            onDataChange();
+            toast.success(editItemData ? "Budget item updated" : "Budget item added");
+          }}
+          preselectedCategoryId={addModalCategoryId}
+          editItem={editItemData ?? undefined}
+        />
+      )}
+
+      {/* Detail Drawer */}
+      <Drawer
+        direction="right"
+        open={!!viewItemDetail}
+        onOpenChange={(isOpen) => {
+          if (!isOpen) setViewItemDetail(null);
+        }}
+      >
+        <DrawerContent className="w-full sm:max-w-md h-full overflow-hidden flex flex-col bg-slate-50 border-l border-slate-200">
+          <DrawerHeader className="bg-white border-b border-slate-100 px-6 py-5 flex items-start justify-between shrink-0">
+            <div>
+              <DrawerTitle className="text-lg font-bold text-slate-900 leading-tight">
+                {viewItemDetail?.activity}
+              </DrawerTitle>
+              <div className="text-sm font-semibold text-slate-500 mt-1">
+                {viewItemDetail?.mainActivity}
+              </div>
+            </div>
+            <DrawerClose asChild>
+              <button className="w-8 h-8 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center hover:bg-slate-200 transition-colors">
+                <span className="sr-only">Close</span>
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M13 1L1 13M1 1L13 13" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </button>
+            </DrawerClose>
+          </DrawerHeader>
+
+          <div className="flex-1 overflow-y-auto p-6 space-y-5">
+            {viewItemDetail && (
+              <>
+                <div className="grid grid-cols-1 gap-4">
+                  <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
+                    <div className="text-[0.7rem] font-bold tracking-widest uppercase text-slate-400 mb-1">Status</div>
+                    <div><StatusBadge status={viewItemDetail.status} /></div>
+                  </div>
+                </div>
+
+                <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm space-y-4">
+                  <div className="flex justify-between items-center border-b border-slate-50 pb-3">
+                    <span className="text-sm font-semibold text-slate-500">Quantity</span>
+                    <span className="font-bold text-slate-800">{viewItemDetail.qty} <span className="text-xs text-slate-500 ml-1">{viewItemDetail.unit}</span></span>
+                  </div>
+                  <div className="flex justify-between items-center border-b border-slate-50 pb-3">
+                    <span className="text-sm font-semibold text-slate-500">Unit Price</span>
+                    <span className="font-bold text-slate-800 font-[Sora]">{formatRp(viewItemDetail.unitPrice)}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-semibold text-slate-500">Total Planned</span>
+                    <span className="font-bold text-slate-900 font-[Sora] text-[1.05rem]">{formatRp(viewItemDetail.totalAmount)}</span>
+                  </div>
+                </div>
+
+                <div className="bg-orange-50/50 p-4 rounded-2xl border border-orange-100/50 shadow-sm">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-semibold text-orange-900/60">Used Amount</span>
+                    <span className="font-bold text-orange-600 font-[Sora] text-[1.05rem]">{formatRp(viewItemDetail.usedAmount)}</span>
+                  </div>
+                  {viewItemDetail.totalAmount > 0 && (
+                    <div className="mt-3 bg-orange-100/50 rounded-full h-1.5 overflow-hidden">
+                      <div 
+                        className="bg-orange-500 h-full rounded-full" 
+                        style={{ width: `${Math.min(100, (viewItemDetail.usedAmount / viewItemDetail.totalAmount) * 100)}%` }}
+                      />
+                    </div>
+                  )}
+                </div>
+
+                <div className="space-y-4">
+                  <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
+                    <div className="text-[0.7rem] font-bold tracking-widest uppercase text-slate-400 mb-1">Target Output</div>
+                    <div className="text-sm font-medium text-slate-700 leading-relaxed">{viewItemDetail.targetOutput || "-"}</div>
+                  </div>
+
+                  {viewItemDetail.referenceUrl && (
+                    <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
+                      <div className="text-[0.7rem] font-bold tracking-widest uppercase text-slate-400 mb-1">Reference URL</div>
+                      <a 
+                        href={viewItemDetail.referenceUrl} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-sm font-medium text-blue-600 hover:text-blue-700 hover:underline flex items-center gap-1.5 break-all"
+                      >
+                        <ExternalLink size={14} className="shrink-0" />
+                        {viewItemDetail.referenceUrl}
+                      </a>
+                    </div>
+                  )}
+
+                  <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
+                    <div className="text-[0.7rem] font-bold tracking-widest uppercase text-slate-400 mb-1">Person in Charge</div>
+                    <div className="flex items-center gap-2 mt-1.5">
+                      <div className="w-6 h-6 rounded-md bg-slate-100 text-slate-600 flex items-center justify-center text-[0.65rem] font-bold">
+                        {viewItemDetail.pic.substring(0, 2).toUpperCase()}
+                      </div>
+                      <span className="text-sm font-semibold text-slate-700">{viewItemDetail.pic}</span>
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        </DrawerContent>
+      </Drawer>
     </div>
   );
 }

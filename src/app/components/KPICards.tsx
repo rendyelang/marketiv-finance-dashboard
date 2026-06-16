@@ -1,68 +1,85 @@
 import { useState } from "react";
 import { TrendingUp, CreditCard, Wallet, PieChart } from "lucide-react";
 
-const cards = [
-  {
-    title: "Total Funding",
-    value: "Rp 20.000.000",
-    icon: TrendingUp,
-    iconColor: "#ea580c",
-    iconBg: "#fff7ed",
-    iconBorder: "rgba(249,115,22,0.18)",
-    note: "P2MW 2025 Program",
-    badgeColor: "#ea580c",
-    badgeBg: "rgba(249,115,22,0.09)",
-    badge: "Active",
-  },
-  {
-    title: "Used Funds",
-    value: "Rp 5.200.000",
-    icon: CreditCard,
-    iconColor: "#2563eb",
-    iconBg: "#eff6ff",
-    iconBorder: "rgba(37,99,235,0.18)",
-    note: "26% of total budget",
-    badgeColor: "#2563eb",
-    badgeBg: "rgba(37,99,235,0.09)",
-    badge: "June 2026",
-  },
-  {
-    title: "Remaining Funds",
-    value: "Rp 14.800.000",
-    icon: Wallet,
-    iconColor: "#16a34a",
-    iconBg: "#f0fdf4",
-    iconBorder: "rgba(22,163,74,0.18)",
-    note: "74% still available",
-    badgeColor: "#16a34a",
-    badgeBg: "rgba(22,163,74,0.09)",
-    badge: "On Track",
-  },
-  {
-    title: "Budget Utilization",
-    value: "26%",
-    icon: PieChart,
-    iconColor: "#7c3aed",
-    iconBg: "#f5f3ff",
-    iconBorder: "rgba(124,58,237,0.18)",
-    note: "Healthy spending pace",
-    badgeColor: "#7c3aed",
-    badgeBg: "rgba(124,58,237,0.09)",
-    badge: "Q2 2026",
-  },
-];
+function formatRp(n: number): string {
+  return `Rp ${n.toLocaleString("id-ID")}`;
+}
 
-export function KPICards() {
+interface KPICardsProps {
+  totalFunding: number;
+  usedFunds: number;
+  remainingFunds: number;
+  budgetUtilization: number;
+  isLoading?: boolean;
+}
+
+export function KPICards({ totalFunding, usedFunds, remainingFunds, budgetUtilization, isLoading }: KPICardsProps) {
   const [hovered, setHovered] = useState<number | null>(null);
 
+  const availablePct = totalFunding > 0 ? Math.round((remainingFunds / totalFunding) * 100) : 0;
+  const usedPct = totalFunding > 0 ? Math.round((usedFunds / totalFunding) * 100) : 0;
+
+  const getUtilizationBadge = () => {
+    if (budgetUtilization >= 90) return { badge: "Critical", badgeColor: "#dc2626", badgeBg: "rgba(220,38,38,0.09)" };
+    if (budgetUtilization >= 75) return { badge: "Warning", badgeColor: "#d97706", badgeBg: "rgba(217,119,6,0.09)" };
+    return { badge: "Healthy", badgeColor: "#16a34a", badgeBg: "rgba(22,163,74,0.09)" };
+  };
+
+  const utilBadge = getUtilizationBadge();
+
+  const cards = [
+    {
+      title: "Total Funding",
+      value: formatRp(totalFunding),
+      icon: TrendingUp,
+      iconColor: "#ea580c",
+      iconBg: "#fff7ed",
+      iconBorder: "rgba(249,115,22,0.18)",
+      note: "P2MW 2026 Program",
+      badgeColor: "#ea580c",
+      badgeBg: "rgba(249,115,22,0.09)",
+      badge: "Active",
+    },
+    {
+      title: "Used Funds",
+      value: formatRp(usedFunds),
+      icon: CreditCard,
+      iconColor: "#2563eb",
+      iconBg: "#eff6ff",
+      iconBorder: "rgba(37,99,235,0.18)",
+      note: `${usedPct}% of total funding`,
+      badgeColor: "#2563eb",
+      badgeBg: "rgba(37,99,235,0.09)",
+      badge: new Date().toLocaleString("en-US", { month: "long", year: "numeric" }),
+    },
+    {
+      title: "Remaining Funds",
+      value: formatRp(remainingFunds),
+      icon: Wallet,
+      iconColor: "#16a34a",
+      iconBg: "#f0fdf4",
+      iconBorder: "rgba(22,163,74,0.18)",
+      note: `${availablePct}% still available`,
+      badgeColor: remainingFunds >= 0 ? "#16a34a" : "#dc2626",
+      badgeBg: remainingFunds >= 0 ? "rgba(22,163,74,0.09)" : "rgba(220,38,38,0.09)",
+      badge: remainingFunds >= 0 ? "On Track" : "Over Budget",
+    },
+    {
+      title: "Budget Utilization",
+      value: `${budgetUtilization}%`,
+      icon: PieChart,
+      iconColor: "#7c3aed",
+      iconBg: "#f5f3ff",
+      iconBorder: "rgba(124,58,237,0.18)",
+      note: budgetUtilization < 75 ? "Healthy spending pace" : budgetUtilization < 90 ? "Approaching limit" : "Over budget limit",
+      badgeColor: utilBadge.badgeColor,
+      badgeBg: utilBadge.badgeBg,
+      badge: utilBadge.badge,
+    },
+  ];
+
   return (
-    <div
-      style={{
-        display: "grid",
-        gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
-        gap: "20px",
-      }}
-    >
+    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5">
       {cards.map((card, i) => {
         const Icon = card.icon;
         const isHovered = hovered === i;
@@ -163,7 +180,11 @@ export function KPICards() {
                 color: "#182033",
               }}
             >
-              {card.value}
+              {isLoading ? (
+                <div style={{ width: "120px", height: "28px", borderRadius: "8px", background: "#eef2f7", animation: "pulse 1.5s infinite" }} />
+              ) : (
+                card.value
+              )}
             </div>
 
             {/* Note */}

@@ -1,12 +1,23 @@
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts";
+import { useNavigate } from "react-router";
+import type { DashboardCategorySummary } from "../../services/budget.service";
 
-const data = [
-  { name: "Product Development & Research", value: 40, color: "#f97316", amount: "Rp 8.000.000" },
-  { name: "Production", value: 25, color: "#2563eb", amount: "Rp 5.000.000" },
-  { name: "Company Legalization", value: 12.5, color: "#7c3aed", amount: "Rp 2.500.000" },
-  { name: "HR Certification", value: 12.5, color: "#16a34a", amount: "Rp 2.500.000" },
-  { name: "Office Supplies & Support", value: 10, color: "#d97706", amount: "Rp 2.000.000" },
-];
+function formatRp(n: number): string {
+  return `Rp ${n.toLocaleString("id-ID")}`;
+}
+
+function formatShortRp(n: number): string {
+  if (n >= 1_000_000_000) return `${(n / 1_000_000_000).toFixed(1)}B`;
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(0)}K`;
+  return String(n);
+}
+
+interface BudgetDistributionProps {
+  categories: DashboardCategorySummary[];
+  totalBudget: number;
+  isLoading?: boolean;
+}
 
 const CustomTooltip = ({ active, payload }: any) => {
   if (active && payload && payload.length) {
@@ -25,45 +36,56 @@ const CustomTooltip = ({ active, payload }: any) => {
           {d.name}
         </div>
         <div style={{ fontFamily: "'Sora', sans-serif", fontSize: "1.1rem", fontWeight: 800, color: "#182033", letterSpacing: "-0.04em" }}>
-          {d.value}%
+          {d.pct.toFixed(1)}%
         </div>
-        <div style={{ fontSize: "0.78rem", color: "#737f91", marginTop: "2px" }}>{d.amount}</div>
+        <div style={{ fontSize: "0.78rem", color: "#737f91", marginTop: "2px" }}>{formatRp(d.budget)}</div>
       </div>
     );
   }
   return null;
 };
 
-const CenterLabel = () => (
-  <text x="50%" y="50%" textAnchor="middle" dominantBaseline="middle">
-    <tspan
-      x="50%"
-      dy="-10"
-      style={{
-        fontFamily: "'Sora', sans-serif",
-        fontSize: "20px",
-        fontWeight: 800,
-        fill: "#182033",
-        letterSpacing: "-2px",
-      }}
-    >
-      20M
-    </tspan>
-    <tspan
-      x="50%"
-      dy="22"
-      style={{
-        fontSize: "11px",
-        fontWeight: 600,
-        fill: "#556174",
-      }}
-    >
-      Total Budget
-    </tspan>
-  </text>
-);
+export function BudgetDistribution({ categories, totalBudget, isLoading }: BudgetDistributionProps) {
+  const navigate = useNavigate();
 
-export function BudgetDistribution() {
+  const chartData = categories.map((cat) => ({
+    id: cat.id,
+    name: cat.name,
+    value: cat.budget,
+    pct: totalBudget > 0 ? (cat.budget / totalBudget) * 100 : 0,
+    budget: cat.budget,
+    color: cat.color,
+  }));
+
+  const CenterLabel = () => (
+    <text x="50%" y="50%" textAnchor="middle" dominantBaseline="middle">
+      <tspan
+        x="50%"
+        dy="-10"
+        style={{
+          fontFamily: "'Sora', sans-serif",
+          fontSize: "20px",
+          fontWeight: 800,
+          fill: "#182033",
+          letterSpacing: "-2px",
+        }}
+      >
+        {formatShortRp(totalBudget)}
+      </tspan>
+      <tspan
+        x="50%"
+        dy="22"
+        style={{
+          fontSize: "11px",
+          fontWeight: 600,
+          fill: "#556174",
+        }}
+      >
+        Total Budget
+      </tspan>
+    </text>
+  );
+
   return (
     <div
       style={{
@@ -113,18 +135,18 @@ export function BudgetDistribution() {
           Budget Distribution
         </div>
         <div style={{ color: "#556174", fontSize: "0.84rem", marginTop: "7px" }}>
-          Allocation by category — P2MW 2025
+          Allocation by category — P2MW 2026
         </div>
       </div>
 
       {/* Chart + Legend */}
-      <div style={{ display: "flex", alignItems: "center", gap: "28px" }}>
+      <div className="flex flex-col xl:flex-row items-center gap-7">
         {/* Donut */}
-        <div style={{ width: "220px", height: "220px", flexShrink: 0 }}>
+        <div className="w-[220px] h-[220px] shrink-0">
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Pie
-                data={data}
+                data={chartData}
                 cx="50%"
                 cy="50%"
                 innerRadius={66}
@@ -133,8 +155,13 @@ export function BudgetDistribution() {
                 dataKey="value"
                 strokeWidth={0}
               >
-                {data.map((entry, index) => (
-                  <Cell key={`pie-cell-${entry.name}-${index}`} fill={entry.color} />
+                {chartData.map((entry, index) => (
+                  <Cell 
+                    key={`pie-cell-${entry.name}-${index}`} 
+                    fill={entry.color} 
+                    style={{ cursor: "pointer", outline: "none" }}
+                    onClick={() => navigate("/rab", { state: { targetCategoryId: entry.id } })}
+                  />
                 ))}
                 <CenterLabel />
               </Pie>
@@ -144,8 +171,8 @@ export function BudgetDistribution() {
         </div>
 
         {/* Legend */}
-        <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "10px" }}>
-          {data.map((item) => (
+        <div className="flex-1 flex flex-col gap-2.5 w-full">
+          {chartData.map((item) => (
             <div
               key={item.name}
               style={{
@@ -157,7 +184,18 @@ export function BudgetDistribution() {
                 background: "rgba(248,250,252,0.8)",
                 border: "1px solid rgba(17,24,39,0.06)",
                 transition: "0.2s",
-                cursor: "default",
+                cursor: "pointer",
+              }}
+              onClick={() => navigate("/rab", { state: { targetCategoryId: item.id } })}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = "white";
+                e.currentTarget.style.borderColor = "rgba(17,24,39,0.12)";
+                e.currentTarget.style.boxShadow = "0 8px 24px rgba(15,23,42,0.06)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = "rgba(248,250,252,0.8)";
+                e.currentTarget.style.borderColor = "rgba(17,24,39,0.06)";
+                e.currentTarget.style.boxShadow = "none";
               }}
             >
               <div
@@ -184,7 +222,7 @@ export function BudgetDistribution() {
                   {item.name}
                 </div>
                 <div style={{ fontSize: "0.74rem", color: "#737f91", marginTop: "2px" }}>
-                  {item.amount}
+                  {formatRp(item.budget)}
                 </div>
               </div>
               <div
@@ -197,7 +235,7 @@ export function BudgetDistribution() {
                   letterSpacing: "-0.02em",
                 }}
               >
-                {item.value}%
+                {item.pct.toFixed(1)}%
               </div>
             </div>
           ))}

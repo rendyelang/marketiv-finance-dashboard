@@ -10,35 +10,16 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import {
-  rabCategories,
-  TOTAL_FUNDING,
   getCategoryRealization,
   getCategoryRemaining,
   getCategoryPct,
-  getTotalRealization,
   getUtilizationStatus,
   formatRp,
+  type RABCategory,
 } from "./rabData";
 import { TrendingUp, AlertTriangle, CheckCircle2, Download, ArrowUpRight } from "lucide-react";
-
-const totalRealization = getTotalRealization();
-const totalRemaining = TOTAL_FUNDING - totalRealization;
-const overallPct = Math.round((totalRealization / TOTAL_FUNDING) * 100);
-
-const chartData = rabCategories.map((cat) => {
-  const realized = getCategoryRealization(cat);
-  const remaining = getCategoryRemaining(cat);
-  const pct = getCategoryPct(cat);
-  return {
-    name: cat.name.split(" ").slice(0, 2).join(" "),
-    fullName: cat.name,
-    budget: cat.budget,
-    realization: realized,
-    remaining,
-    pct,
-    color: cat.color,
-  };
-});
+import { toast } from "sonner";
+import { RealizationDrawer } from "./RealizationDrawer";
 
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
@@ -147,8 +128,34 @@ const CustomTooltip = ({ active, payload, label }: any) => {
   return null;
 };
 
-export function RealizationTab() {
+interface RealizationTabProps {
+  rabCategories: RABCategory[];
+  totalBudget: number;
+  totalRealization: number;
+  isLoading: boolean;
+}
+
+export function RealizationTab({ rabCategories, totalBudget, totalRealization, isLoading }: RealizationTabProps) {
   const [hoveredRow, setHoveredRow] = useState<string | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<{ id: string; name: string; budget: number; realization: number; itemIds: string[] } | null>(null);
+
+  const totalRemaining = totalBudget - totalRealization;
+  const overallPct = totalBudget > 0 ? Math.round((totalRealization / totalBudget) * 100) : 0;
+
+  const chartData = rabCategories.map((cat) => {
+    const realized = getCategoryRealization(cat);
+    const remaining = getCategoryRemaining(cat);
+    const pct = getCategoryPct(cat);
+    return {
+      name: cat.name.split(" ").slice(0, 2).join(" "),
+      fullName: cat.name,
+      budget: cat.budget,
+      realization: realized,
+      remaining,
+      pct,
+      color: cat.color,
+    };
+  });
 
   const criticalCount = rabCategories.filter((c) => getCategoryPct(c) >= 90).length;
   const warningCount = rabCategories.filter(
@@ -156,20 +163,24 @@ export function RealizationTab() {
   ).length;
   const onTrackCount = rabCategories.filter((c) => getCategoryPct(c) < 75).length;
 
+  if (isLoading) {
+    return (
+      <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
+        {[1, 2, 3].map((i) => (
+          <div key={i} style={{ height: "100px", borderRadius: "24px", background: "#f8fafc", border: "1px solid rgba(17,24,39,0.08)" }} />
+        ))}
+      </div>
+    );
+  }
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
       {/* Top summary strip */}
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(4, minmax(0,1fr))",
-          gap: "16px",
-        }}
-      >
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
         {[
           {
             label: "Total Budget",
-            value: formatRp(TOTAL_FUNDING),
+            value: formatRp(totalBudget),
             icon: TrendingUp,
             color: "#ea580c",
             bg: "#fff7ed",
@@ -300,15 +311,7 @@ export function RealizationTab() {
           boxShadow: "0 18px 46px rgba(15,23,42,0.10)",
         }}
       >
-        <div
-          style={{
-            display: "flex",
-            alignItems: "flex-start",
-            justifyContent: "space-between",
-            gap: "16px",
-            marginBottom: "28px",
-          }}
-        >
+        <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-4 mb-7">
           <div>
             <div
               style={{
@@ -349,7 +352,7 @@ export function RealizationTab() {
               Actual spending against planned allocation — stacked view
             </div>
           </div>
-          <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
+          <div className="flex flex-wrap lg:flex-nowrap gap-3 items-center">
             {[
               { color: "rgba(249,115,22,0.15)", label: "Remaining Budget", border: "rgba(249,115,22,0.22)" },
               { color: "#f97316", label: "Realized", border: "transparent" },
@@ -378,6 +381,7 @@ export function RealizationTab() {
               </div>
             ))}
             <button
+              onClick={() => toast.info('Feature under construction 🚧')}
               style={{
                 display: "flex",
                 alignItems: "center",
@@ -527,6 +531,8 @@ export function RealizationTab() {
           </div>
         </div>
 
+        <div className="overflow-x-auto w-full pb-2">
+          <div className="min-w-[900px]">
         {/* Column headers */}
         <div
           style={{
@@ -581,8 +587,15 @@ export function RealizationTab() {
                   transition: "0.18s cubic-bezier(.2,.8,.2,1)",
                   alignItems: "center",
                   marginBottom: "4px",
-                  cursor: "default",
+                  cursor: "pointer",
                 }}
+                onClick={() => setSelectedCategory({
+                  id: cat.id,
+                  name: cat.name,
+                  budget: cat.budget,
+                  realization: realization,
+                  itemIds: cat.items.map(item => item.id)
+                })}
               >
                 {/* Category */}
                 <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
@@ -655,7 +668,7 @@ export function RealizationTab() {
                       fontWeight: 600,
                     }}
                   >
-                    {((cat.budget / TOTAL_FUNDING) * 100).toFixed(1)}% of total
+                    {totalBudget > 0 ? ((cat.budget / totalBudget) * 100).toFixed(1) : 0}% of total
                   </div>
                 </div>
 
@@ -834,7 +847,7 @@ export function RealizationTab() {
               letterSpacing: "-0.04em",
             }}
           >
-            {formatRp(TOTAL_FUNDING)}
+            {formatRp(totalBudget)}
           </div>
           <div
             style={{
@@ -928,11 +941,13 @@ export function RealizationTab() {
             {overallPct}% used
           </div>
         </div>
+          </div>
+        </div>
       </div>
 
       {/* Alert summary */}
       {(criticalCount > 0 || warningCount > 0) && (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0,1fr))", gap: "16px" }}>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {rabCategories
             .filter((c) => getCategoryPct(c) >= 75)
             .map((cat) => {
@@ -1048,6 +1063,13 @@ export function RealizationTab() {
             })}
         </div>
       )}
+
+      {/* Realization Drill-down Drawer */}
+      <RealizationDrawer 
+        isOpen={!!selectedCategory}
+        onClose={() => setSelectedCategory(null)}
+        category={selectedCategory}
+      />
     </div>
   );
 }

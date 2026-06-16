@@ -1,10 +1,8 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { TopNav } from "./TopNav";
 import { UserDrawer } from "./users/UserDrawer";
 import { AddUserModal } from "./users/AddUserModal";
 import {
-  users,
-  workspaceActivity,
   PERMISSIONS,
   ROLE_PERMISSIONS,
   getRoleStyle,
@@ -15,7 +13,6 @@ import {
   getAdminCount,
   getMemberCount,
   getInvitedCount,
-  type AppUser,
   type UserRole,
   type UserStatus,
 } from "./users/userData";
@@ -33,59 +30,10 @@ import {
   Minus,
   Clock,
   ShieldHalf,
+  Loader2,
 } from "lucide-react";
-
-const activeCount = getActiveCount();
-const adminCount = getAdminCount();
-const memberCount = getMemberCount();
-const invitedCount = getInvitedCount();
-
-const summaryCards = [
-  {
-    title: "Total Users",
-    value: String(users.length),
-    icon: UsersIcon,
-    iconColor: "#ea580c",
-    iconBg: "#fff7ed",
-    badge: `${activeCount} active`,
-    badgeColor: "#ea580c",
-    badgeBg: "rgba(249,115,22,0.09)",
-    note: "Across the workspace",
-  },
-  {
-    title: "Administrators",
-    value: String(adminCount),
-    icon: ShieldCheck,
-    iconColor: "#ea580c",
-    iconBg: "#fff7ed",
-    badge: "Full access",
-    badgeColor: "#ea580c",
-    badgeBg: "rgba(249,115,22,0.09)",
-    note: "Can manage users & budgets",
-  },
-  {
-    title: "Members",
-    value: String(memberCount),
-    icon: UserCheck,
-    iconColor: "#2563eb",
-    iconBg: "#eff6ff",
-    badge: "Standard",
-    badgeColor: "#2563eb",
-    badgeBg: "rgba(37,99,235,0.09)",
-    note: "Operational access",
-  },
-  {
-    title: "Pending Invites",
-    value: String(invitedCount),
-    icon: Mail,
-    iconColor: "#d97706",
-    iconBg: "#fffbeb",
-    badge: "Awaiting",
-    badgeColor: "#d97706",
-    badgeBg: "rgba(217,119,6,0.09)",
-    note: "Invitation sent, not joined",
-  },
-];
+import { fetchUsers, type UserProfile } from "../../services/user.service";
+import { supabase } from "../../lib/supabase";
 
 function Avatar({ name }: { name: string }) {
   return (
@@ -110,7 +58,7 @@ function Avatar({ name }: { name: string }) {
   );
 }
 
-function UserRow({ user, onSelect }: { user: AppUser; onSelect: (u: AppUser) => void }) {
+function UserRow({ user, onSelect }: { user: UserProfile; onSelect: (u: UserProfile) => void }) {
   const [hovered, setHovered] = useState(false);
   const roleStyle = getRoleStyle(user.role);
   const statusStyle = getUserStatusStyle(user.status);
@@ -134,7 +82,7 @@ function UserRow({ user, onSelect }: { user: AppUser; onSelect: (u: AppUser) => 
         cursor: "pointer",
       }}
     >
-      <Avatar name={user.name} />
+      <Avatar name={user.full_name || ""} />
 
       {/* Name + email */}
       <div style={{ minWidth: 0 }}>
@@ -150,7 +98,7 @@ function UserRow({ user, onSelect }: { user: AppUser; onSelect: (u: AppUser) => 
             lineHeight: 1.3,
           }}
         >
-          {user.name}
+          {user.full_name}
         </div>
         <div
           style={{
@@ -226,7 +174,7 @@ function UserRow({ user, onSelect }: { user: AppUser; onSelect: (u: AppUser) => 
           fontWeight: 600,
         }}
       >
-        {formatUserDate(user.lastActive)}
+        {formatUserDate(user.last_active_at)}
       </div>
 
       {/* Actions */}
@@ -283,9 +231,8 @@ function UserRow({ user, onSelect }: { user: AppUser; onSelect: (u: AppUser) => 
   );
 }
 
-/* ── Permissions overview matrix (Role × Permission) ── */
 function PermissionsOverview() {
-  const roles: UserRole[] = ["Admin", "Member"];
+  const roles: UserRole[] = ["ADMIN", "MEMBER"];
   return (
     <div
       style={{
@@ -296,7 +243,6 @@ function PermissionsOverview() {
         overflow: "hidden",
       }}
     >
-      {/* Header */}
       <div
         style={{
           padding: "22px 28px",
@@ -338,16 +284,8 @@ function PermissionsOverview() {
         </div>
       </div>
 
-      {/* Matrix header */}
       <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "1fr 120px 120px",
-          gap: "14px",
-          padding: "12px 28px",
-          background: "#f8fafc",
-          borderBottom: "1px solid rgba(17,24,39,0.06)",
-        }}
+        className="grid grid-cols-[1fr_75px_75px] sm:grid-cols-[1fr_120px_120px] gap-2 sm:gap-[14px] px-4 sm:px-[28px] py-[12px] bg-[#f8fafc] border-b border-gray-900/5 items-center"
       >
         <div
           style={{
@@ -379,26 +317,18 @@ function PermissionsOverview() {
                 }}
               >
                 <ShieldCheck size={11} strokeWidth={2.5} />
-                {r}
+                {r === "ADMIN" ? "Admin" : "Member"}
               </span>
             </div>
           );
         })}
       </div>
 
-      {/* Matrix rows */}
       <div style={{ padding: "8px 16px 16px" }}>
         {PERMISSIONS.map((perm) => (
           <div
             key={perm.key}
-            style={{
-              display: "grid",
-              gridTemplateColumns: "1fr 120px 120px",
-              gap: "14px",
-              alignItems: "center",
-              padding: "13px 12px",
-              borderRadius: "14px",
-            }}
+            className="grid grid-cols-[1fr_75px_75px] sm:grid-cols-[1fr_120px_120px] gap-2 sm:gap-[14px] items-center px-2 sm:px-[12px] py-[13px] rounded-[14px]"
           >
             <div style={{ minWidth: 0 }}>
               <div
@@ -451,8 +381,22 @@ function PermissionsOverview() {
   );
 }
 
-/* ── Recent workspace activity feed ── */
 function RecentUserActivity() {
+  const [activities, setActivities] = useState<any[]>([]);
+
+  useEffect(() => {
+    async function loadActivities() {
+      const { data } = await supabase
+        .from('activity_logs')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(7);
+      
+      if (data) setActivities(data);
+    }
+    loadActivities();
+  }, []);
+
   return (
     <div
       style={{
@@ -465,7 +409,6 @@ function RecentUserActivity() {
         flexDirection: "column",
       }}
     >
-      {/* Header */}
       <div
         style={{
           padding: "22px 28px",
@@ -507,10 +450,8 @@ function RecentUserActivity() {
         </div>
       </div>
 
-      {/* Feed */}
       <div style={{ padding: "16px 20px", display: "flex", flexDirection: "column", gap: "6px" }}>
-        {workspaceActivity.map((act) => {
-          const rs = getRoleStyle(act.role);
+        {activities.map((act) => {
           return (
             <div
               key={act.id}
@@ -524,7 +465,7 @@ function RecentUserActivity() {
                 background: "#fcfdfe",
               }}
             >
-              <Avatar name={act.userName} />
+              <Avatar name={act.user_name || "Unknown"} />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
                   <span
@@ -535,20 +476,7 @@ function RecentUserActivity() {
                       letterSpacing: "-0.018em",
                     }}
                   >
-                    {act.userName}
-                  </span>
-                  <span
-                    style={{
-                      padding: "1px 8px",
-                      borderRadius: "999px",
-                      background: rs.bg,
-                      color: rs.color,
-                      border: `1px solid ${rs.border}`,
-                      fontSize: "0.64rem",
-                      fontWeight: 800,
-                    }}
-                  >
-                    {act.role}
+                    {act.user_name}
                   </span>
                 </div>
                 <div
@@ -560,7 +488,7 @@ function RecentUserActivity() {
                     lineHeight: 1.35,
                   }}
                 >
-                  {act.action}
+                  {act.action} - {act.entity_type}
                 </div>
               </div>
               <div
@@ -576,7 +504,7 @@ function RecentUserActivity() {
                 }}
               >
                 <Clock size={11} />
-                {formatUserDate(act.date)} · {act.time}
+                {formatUserDate(act.created_at)}
               </div>
             </div>
           );
@@ -586,25 +514,94 @@ function RecentUserActivity() {
   );
 }
 
-export function UsersPage() {
-  const [selectedUser, setSelectedUser] = useState<AppUser | null>(null);
+interface UsersPageProps {
+  onMenuClick?: () => void;
+}
+
+export function UsersPage({ onMenuClick }: UsersPageProps) {
+  const [users, setUsers] = useState<UserProfile[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [search, setSearch] = useState("");
   const [filterRole, setFilterRole] = useState<UserRole | "All">("All");
   const [filterStatus, setFilterStatus] = useState<UserStatus | "All">("All");
 
+  const loadUsers = async () => {
+    setLoading(true);
+    const { data } = await fetchUsers();
+    setUsers(data);
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    loadUsers();
+  }, []);
+
   const filtered = useMemo(() => {
     return users.filter((u) => {
       const matchSearch =
         !search ||
-        u.name.toLowerCase().includes(search.toLowerCase()) ||
-        u.email.toLowerCase().includes(search.toLowerCase()) ||
-        u.position.toLowerCase().includes(search.toLowerCase());
+        (u.full_name && u.full_name.toLowerCase().includes(search.toLowerCase())) ||
+        (u.email && u.email.toLowerCase().includes(search.toLowerCase())) ||
+        (u.position && u.position.toLowerCase().includes(search.toLowerCase()));
       const matchRole = filterRole === "All" || u.role === filterRole;
       const matchStatus = filterStatus === "All" || u.status === filterStatus;
       return matchSearch && matchRole && matchStatus;
     });
-  }, [search, filterRole, filterStatus]);
+  }, [search, filterRole, filterStatus, users]);
+
+  const activeCount = getActiveCount(users);
+  const adminCount = getAdminCount(users);
+  const memberCount = getMemberCount(users);
+  const invitedCount = getInvitedCount(users);
+
+  const summaryCards = [
+    {
+      title: "Total Users",
+      value: String(users.length),
+      icon: UsersIcon,
+      iconColor: "#ea580c",
+      iconBg: "#fff7ed",
+      badge: `${activeCount} active`,
+      badgeColor: "#ea580c",
+      badgeBg: "rgba(249,115,22,0.09)",
+      note: "Across the workspace",
+    },
+    {
+      title: "Administrators",
+      value: String(adminCount),
+      icon: ShieldCheck,
+      iconColor: "#ea580c",
+      iconBg: "#fff7ed",
+      badge: "Full access",
+      badgeColor: "#ea580c",
+      badgeBg: "rgba(249,115,22,0.09)",
+      note: "Can manage users & budgets",
+    },
+    {
+      title: "Members",
+      value: String(memberCount),
+      icon: UserCheck,
+      iconColor: "#2563eb",
+      iconBg: "#eff6ff",
+      badge: "Standard",
+      badgeColor: "#2563eb",
+      badgeBg: "rgba(37,99,235,0.09)",
+      note: "Operational access",
+    },
+    {
+      title: "Pending Invites",
+      value: String(invitedCount),
+      icon: Mail,
+      iconColor: "#d97706",
+      iconBg: "#fffbeb",
+      badge: "Awaiting",
+      badgeColor: "#d97706",
+      badgeBg: "rgba(217,119,6,0.09)",
+      note: "Invitation sent, not joined",
+    },
+  ];
 
   return (
     <div
@@ -617,7 +614,7 @@ export function UsersPage() {
         overflowY: "auto",
       }}
     >
-      <TopNav title="User Management" subtitle="Roles, Access & Team Members" />
+      <TopNav title="User Management" subtitle="Roles, Access & Team Members" onMenuClick={onMenuClick} />
 
       <main
         style={{
@@ -628,7 +625,7 @@ export function UsersPage() {
           gap: "24px",
         }}
       >
-        {/* ── Hero Section ── */}
+        {/* Hero Section */}
         <div
           style={{
             borderRadius: "32px",
@@ -736,7 +733,6 @@ export function UsersPage() {
             </div>
           </div>
 
-          {/* Decorative role tokens */}
           <div
             style={{
               position: "relative",
@@ -802,14 +798,8 @@ export function UsersPage() {
           </div>
         </div>
 
-        {/* ── User Summary Cards ── */}
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(4, minmax(0,1fr))",
-            gap: "18px",
-          }}
-        >
+        {/* User Summary Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-[18px]">
           {summaryCards.map((card) => {
             const Icon = card.icon;
             return (
@@ -886,7 +876,7 @@ export function UsersPage() {
           })}
         </div>
 
-        {/* ── User Management Table ── */}
+        {/* User Management Table */}
         <div
           style={{
             borderRadius: "32px",
@@ -896,17 +886,12 @@ export function UsersPage() {
             overflow: "hidden",
           }}
         >
-          {/* Card header */}
           <div
+            className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 p-5 md:p-[22px_28px]"
             style={{
-              padding: "22px 28px",
               borderBottom: "1px solid rgba(17,24,39,0.07)",
               background:
                 "radial-gradient(circle at 100% 0%, rgba(249,115,22,0.06), transparent 16rem), linear-gradient(180deg, rgba(255,255,255,0.96), rgba(255,255,255,0.72))",
-              display: "flex",
-              alignItems: "flex-start",
-              justifyContent: "space-between",
-              gap: "16px",
             }}
           >
             <div>
@@ -968,7 +953,6 @@ export function UsersPage() {
             </button>
           </div>
 
-          {/* Toolbar */}
           <div
             style={{
               padding: "14px 20px",
@@ -980,7 +964,6 @@ export function UsersPage() {
               flexWrap: "wrap",
             }}
           >
-            {/* Search */}
             <div
               style={{
                 display: "flex",
@@ -1001,7 +984,7 @@ export function UsersPage() {
               <input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search by name, email, role..."
+                placeholder="Search by name, email, position..."
                 style={{
                   background: "none",
                   border: "none",
@@ -1018,9 +1001,8 @@ export function UsersPage() {
               />
             </div>
 
-            {/* Role filter */}
             <div style={{ display: "flex", gap: "5px" }}>
-              {(["All", "Admin", "Member"] as const).map((r) => (
+              {(["All", "ADMIN", "MEMBER"] as const).map((r) => (
                 <button
                   key={r}
                   onClick={() => setFilterRole(r)}
@@ -1040,12 +1022,11 @@ export function UsersPage() {
                     transition: "0.16s",
                   }}
                 >
-                  {r}
+                  {r === "ADMIN" ? "Admin" : r === "MEMBER" ? "Member" : "All"}
                 </button>
               ))}
             </div>
 
-            {/* Status filter */}
             <div style={{ position: "relative", marginLeft: "auto" }}>
               <select
                 value={filterStatus}
@@ -1066,9 +1047,9 @@ export function UsersPage() {
                   minHeight: "auto",
                 }}
               >
-                {["All", "Active", "Invited", "Inactive"].map((s) => (
+                {["All", "ACTIVE", "INVITED", "INACTIVE"].map((s) => (
                   <option key={s} value={s}>
-                    {s === "All" ? "All Statuses" : s}
+                    {s === "All" ? "All Statuses" : s === "ACTIVE" ? "Active" : s === "INVITED" ? "Invited" : "Inactive"}
                   </option>
                 ))}
               </select>
@@ -1086,105 +1067,115 @@ export function UsersPage() {
             </div>
           </div>
 
-          {/* Table header */}
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "38px 1fr 130px 120px 90px 80px",
-              gap: "14px",
-              padding: "10px 20px",
-              background: "#f8fafc",
-              borderBottom: "1px solid rgba(17,24,39,0.06)",
-            }}
-          >
-            {["", "Member", "Role", "Status", "Last Active", ""].map((h, i) => (
-              <div
-                key={i}
-                style={{
-                  fontSize: "0.68rem",
-                  fontWeight: 800,
-                  color: "#737f91",
-                  letterSpacing: "0.07em",
-                  textTransform: "uppercase",
-                }}
-              >
-                {h}
-              </div>
-            ))}
-          </div>
-
-          {/* Rows */}
-          <div style={{ padding: "10px 12px", display: "flex", flexDirection: "column", gap: "5px" }}>
-            {filtered.length === 0 ? (
+          <div className="overflow-x-auto w-full pb-2">
+            <div className="min-w-[800px]">
               <div
                 style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: "12px",
-                  padding: "48px 24px",
-                  textAlign: "center",
+                  display: "grid",
+                  gridTemplateColumns: "38px 1fr 130px 120px 90px 80px",
+                  gap: "14px",
+                  padding: "10px 20px",
+                  background: "#f8fafc",
+                  borderBottom: "1px solid rgba(17,24,39,0.06)",
                 }}
               >
-                <div
-                  style={{
-                    width: "52px",
-                    height: "52px",
-                    borderRadius: "18px",
-                    background: "#fff7ed",
-                    border: "1px solid rgba(249,115,22,0.16)",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    color: "#ea580c",
-                  }}
-                >
-                  <Search size={22} />
-                </div>
-                <div>
+                {["", "Member", "Role", "Status", "Last Active", ""].map((h, i) => (
                   <div
+                    key={i}
                     style={{
-                      fontSize: "0.92rem",
-                      fontWeight: 700,
-                      color: "#182033",
-                      letterSpacing: "-0.025em",
+                      fontSize: "0.68rem",
+                      fontWeight: 800,
+                      color: "#737f91",
+                      letterSpacing: "0.07em",
+                      textTransform: "uppercase",
                     }}
                   >
-                    No users found
+                    {h}
                   </div>
-                  <div style={{ color: "#737f91", fontSize: "0.82rem", marginTop: "4px" }}>
-                    Try adjusting your search or filter criteria.
-                  </div>
-                </div>
+                ))}
               </div>
-            ) : (
-              filtered.map((user) => (
-                <UserRow key={user.id} user={user} onSelect={setSelectedUser} />
-              ))
-            )}
+
+              <div style={{ padding: "10px 12px", display: "flex", flexDirection: "column", gap: "5px", minHeight: "200px" }}>
+                {loading ? (
+                  <div className="flex justify-center items-center h-40">
+                    <Loader2 className="animate-spin text-orange-500" size={32} />
+                  </div>
+                ) : filtered.length === 0 ? (
+                  <div
+                    style={{
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: "12px",
+                      padding: "48px 24px",
+                      textAlign: "center",
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: "52px",
+                        height: "52px",
+                        borderRadius: "18px",
+                        background: "#fff7ed",
+                        border: "1px solid rgba(249,115,22,0.16)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        color: "#ea580c",
+                      }}
+                    >
+                      <Search size={22} />
+                    </div>
+                    <div>
+                      <div
+                        style={{
+                          fontSize: "0.92rem",
+                          fontWeight: 700,
+                          color: "#182033",
+                          letterSpacing: "-0.025em",
+                        }}
+                      >
+                        No users found
+                      </div>
+                      <div style={{ color: "#737f91", fontSize: "0.82rem", marginTop: "4px" }}>
+                        Try adjusting your search or filter criteria.
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  filtered.map((user) => (
+                    <UserRow key={user.id} user={user} onSelect={setSelectedUser} />
+                  ))
+                )}
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* ── Permissions Overview + Recent Activity ── */}
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "1.1fr 1fr",
-            gap: "24px",
-            alignItems: "start",
-          }}
-        >
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
           <PermissionsOverview />
           <RecentUserActivity />
         </div>
       </main>
 
-      {/* Drawer */}
-      <UserDrawer user={selectedUser} onClose={() => setSelectedUser(null)} />
+      <UserDrawer 
+        user={selectedUser} 
+        onClose={() => {
+          setSelectedUser(null);
+          loadUsers(); // Refresh when drawer closes
+        }} 
+      />
 
-      {/* Add Modal */}
-      {showAddModal && <AddUserModal onClose={() => setShowAddModal(false)} />}
+      {showAddModal && (
+        <AddUserModal 
+          onClose={() => setShowAddModal(false)} 
+          onSuccess={() => {
+            setShowAddModal(false);
+            loadUsers();
+          }} 
+        />
+      )}
     </div>
   );
 }

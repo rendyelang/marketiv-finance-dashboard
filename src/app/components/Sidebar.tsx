@@ -1,4 +1,5 @@
-import { LayoutDashboard, ArrowLeftRight, FileSpreadsheet, BarChart3, Shield, Users } from "lucide-react";
+import { LayoutDashboard, ArrowLeftRight, FileSpreadsheet, BarChart3, Shield, Users, X, LogOut } from "lucide-react";
+import { useAuth } from "../contexts/AuthContext";
 
 export type PageId = "dashboard" | "transactions" | "rab" | "reports" | "audit" | "users";
 
@@ -11,6 +12,8 @@ interface NavItem {
 interface SidebarProps {
   activePage: PageId;
   onNavigate: (page: PageId) => void;
+  isOpen?: boolean;
+  onClose?: () => void;
 }
 
 const navItems: NavItem[] = [
@@ -21,23 +24,23 @@ const navItems: NavItem[] = [
   { name: "Audit Trail", pageId: "audit", icon: Shield },
 ];
 
-export function Sidebar({ activePage, onNavigate }: SidebarProps) {
+export function Sidebar({ activePage, onNavigate, isOpen, onClose }: SidebarProps) {
+  const { profile, logout } = useAuth();
+
   return (
     <div
-      style={{
-        width: "260px",
-        minHeight: "100vh",
-        background: "#0c172b",
-        display: "flex",
-        flexDirection: "column",
-        padding: "24px 16px",
-        flexShrink: 0,
-        position: "sticky",
-        top: 0,
-        height: "100vh",
-        overflowY: "auto",
-      }}
+      className={`
+        fixed inset-y-0 left-0 z-50 w-[260px] bg-[#0c172b] flex flex-col p-6 shrink-0 h-screen overflow-y-auto transition-transform duration-300 ease-in-out
+        ${isOpen ? "translate-x-0" : "-translate-x-full"}
+        lg:relative lg:translate-x-0 lg:sticky lg:top-0
+      `}
     >
+      {/* Mobile Close Button */}
+      {onClose && (
+        <button onClick={onClose} className="lg:hidden absolute top-4 right-4 p-2 text-slate-400 hover:text-white rounded-lg hover:bg-white/10 transition-colors">
+          <X size={20} />
+        </button>
+      )}
       {/* Logo */}
       <div
         style={{
@@ -48,31 +51,7 @@ export function Sidebar({ activePage, onNavigate }: SidebarProps) {
           marginBottom: "36px",
         }}
       >
-        <div
-          style={{
-            width: "44px",
-            height: "44px",
-            borderRadius: "16px",
-            background: "linear-gradient(135deg, #f97316, #ea580c)",
-            boxShadow: "0 20px 60px rgba(249,115,22,.22)",
-            flexShrink: 0,
-            position: "relative",
-            overflow: "hidden",
-          }}
-        >
-          <div
-            style={{
-              position: "absolute",
-              top: "12px",
-              left: "9px",
-              right: "9px",
-              bottom: "12px",
-              borderRadius: "999px",
-              border: "2px solid rgba(255,255,255,.88)",
-              transform: "rotate(-22deg)",
-            }}
-          />
-        </div>
+        <img src="/logo_marketiv.png" alt="Marketiv Logo" className="w-16 h-auto object-contain shrink-0" />
         <div>
           <div
             style={{
@@ -129,9 +108,7 @@ export function Sidebar({ activePage, onNavigate }: SidebarProps) {
                 minHeight: "48px",
                 padding: "0 16px",
                 borderRadius: "16px",
-                background: isActive
-                  ? "linear-gradient(135deg, #f97316, #f59e0b)"
-                  : "transparent",
+                background: isActive ? "linear-gradient(135deg, #f97316, #f59e0b)" : "transparent",
                 color: isActive ? "white" : "rgba(255,255,255,0.50)",
                 border: "none",
                 cursor: "pointer",
@@ -139,9 +116,7 @@ export function Sidebar({ activePage, onNavigate }: SidebarProps) {
                 fontSize: "0.88rem",
                 fontWeight: isActive ? 700 : 600,
                 textAlign: "left",
-                boxShadow: isActive
-                  ? "0 14px 30px rgba(249,115,22,0.28)"
-                  : "none",
+                boxShadow: isActive ? "0 14px 30px rgba(249,115,22,0.28)" : "none",
                 letterSpacing: "-0.01em",
               }}
             >
@@ -164,56 +139,58 @@ export function Sidebar({ activePage, onNavigate }: SidebarProps) {
       </nav>
 
       {/* Divider */}
-      <div
-        style={{
-          height: "1px",
-          background: "rgba(255,255,255,0.07)",
-          margin: "20px 0",
-        }}
-      />
+      {profile?.role === "ADMIN" && (
+        <>
+          <div
+            style={{
+              height: "1px",
+              background: "rgba(255,255,255,0.07)",
+              margin: "20px 0",
+            }}
+          />
 
-      {/* Administration label */}
-      <div
-        style={{
-          color: "rgba(255,255,255,0.28)",
-          fontSize: "0.68rem",
-          fontWeight: 700,
-          letterSpacing: "0.1em",
-          textTransform: "uppercase",
-          padding: "0 16px",
-          marginBottom: "8px",
-        }}
-      >
-        Administration
-      </div>
+          {/* Administration label */}
+          <div
+            style={{
+              color: "rgba(255,255,255,0.28)",
+              fontSize: "0.68rem",
+              fontWeight: 700,
+              letterSpacing: "0.1em",
+              textTransform: "uppercase",
+              padding: "0 16px",
+              marginBottom: "8px",
+            }}
+          >
+            Administration
+          </div>
 
-      <nav style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-        <button
-          onClick={() => onNavigate("users")}
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "12px",
-            minHeight: "48px",
-            padding: "0 16px",
-            borderRadius: "16px",
-            background: activePage === "users"
-              ? "linear-gradient(135deg, #f97316, #f59e0b)"
-              : "transparent",
-            color: activePage === "users" ? "white" : "rgba(255,255,255,0.50)",
-            border: "none",
-            cursor: "pointer",
-            fontSize: "0.88rem",
-            fontWeight: activePage === "users" ? 700 : 600,
-            textAlign: "left",
-            transition: "0.22s cubic-bezier(.2,.8,.2,1)",
-            boxShadow: activePage === "users" ? "0 14px 30px rgba(249,115,22,0.28)" : "none",
-          }}
-        >
-          <Users size={18} strokeWidth={2} />
-          <span>User Management</span>
-        </button>
-      </nav>
+          <nav style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+            <button
+              onClick={() => onNavigate("users")}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "12px",
+                minHeight: "48px",
+                padding: "0 16px",
+                borderRadius: "16px",
+                background: activePage === "users" ? "linear-gradient(135deg, #f97316, #f59e0b)" : "transparent",
+                color: activePage === "users" ? "white" : "rgba(255,255,255,0.50)",
+                border: "none",
+                cursor: "pointer",
+                fontSize: "0.88rem",
+                fontWeight: activePage === "users" ? 700 : 600,
+                textAlign: "left",
+                transition: "0.22s cubic-bezier(.2,.8,.2,1)",
+                boxShadow: activePage === "users" ? "0 14px 30px rgba(249,115,22,0.28)" : "none",
+              }}
+            >
+              <Users size={18} strokeWidth={2} />
+              <span>User Management</span>
+            </button>
+          </nav>
+        </>
+      )}
 
       {/* Bottom: User Profile */}
       <div style={{ marginTop: "auto" }}>
@@ -233,22 +210,32 @@ export function Sidebar({ activePage, onNavigate }: SidebarProps) {
               width: "38px",
               height: "38px",
               borderRadius: "14px",
-              background:
-                "radial-gradient(circle at 38% 28%, rgba(255,255,255,0.9) 0 12%, transparent 13%), linear-gradient(135deg, #fed7aa, #fb923c)",
+              background: "radial-gradient(circle at 38% 28%, rgba(255,255,255,0.9) 0 12%, transparent 13%), linear-gradient(135deg, #fed7aa, #fb923c)",
               flexShrink: 0,
               boxShadow: "0 10px 20px rgba(249,115,22,0.18)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              color: "#ea580c",
+              fontWeight: 700,
+              fontSize: "1rem",
             }}
-          />
-          <div style={{ minWidth: 0 }}>
+          >
+            {profile?.full_name?.charAt(0)?.toUpperCase() || "U"}
+          </div>
+          <div style={{ minWidth: 0, flex: 1 }}>
             <div
               style={{
                 color: "white",
                 fontSize: "0.84rem",
                 fontWeight: 700,
                 letterSpacing: "-0.02em",
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
               }}
             >
-              Admin User
+              {profile?.full_name || "Loading..."}
             </div>
             <div
               style={{
@@ -256,22 +243,15 @@ export function Sidebar({ activePage, onNavigate }: SidebarProps) {
                 fontSize: "0.72rem",
                 fontWeight: 600,
                 marginTop: "2px",
+                textTransform: "capitalize",
               }}
             >
-              Treasurer · P2MW
+              {profile?.position || "..."}
             </div>
           </div>
-          <div
-            style={{
-              marginLeft: "auto",
-              width: "8px",
-              height: "8px",
-              borderRadius: "999px",
-              background: "#16a34a",
-              boxShadow: "0 0 0 3px rgba(22,163,74,0.2)",
-              flexShrink: 0,
-            }}
-          />
+          <button onClick={() => logout()} className="text-slate-400 hover:text-white transition-colors cursor-pointer" title="Log Out">
+            <LogOut size={18} />
+          </button>
         </div>
       </div>
     </div>

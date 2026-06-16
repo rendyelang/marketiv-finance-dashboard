@@ -1,36 +1,47 @@
+import { useState, useEffect } from "react";
 import { TopNav } from "./TopNav";
 import { KPICards } from "./KPICards";
 import { BudgetDistribution } from "./BudgetDistribution";
 import { RecentActivity } from "./RecentActivity";
 import { BudgetAlerts } from "./BudgetAlerts";
 import { BudgetProgress } from "./BudgetProgress";
+import { fetchDashboardData, type DashboardData } from "../../services/budget.service";
 
-export function DashboardPage() {
+interface DashboardPageProps {
+  onMenuClick?: () => void;
+}
+
+export function DashboardPage({ onMenuClick }: DashboardPageProps) {
+  const [data, setData] = useState<DashboardData | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const load = async () => {
+      setIsLoading(true);
+      const res = await fetchDashboardData();
+      if (res.error) {
+        setError(res.error);
+      } else {
+        setData(res.data);
+      }
+      setIsLoading(false);
+    };
+    load();
+  }, []);
+
+  const now = new Date();
+  const monthYear = now.toLocaleString("en-US", { month: "long", year: "numeric" });
+
   return (
-    <div
-      style={{
-        flex: 1,
-        display: "flex",
-        flexDirection: "column",
-        minWidth: 0,
-        maxHeight: "100vh",
-        overflowY: "auto",
-      }}
-    >
+    <div className="flex-1 flex flex-col min-w-0 max-h-screen overflow-y-auto">
       <TopNav
         title="Financial Dashboard"
         subtitle="Marketiv P2MW Funding Overview"
+        onMenuClick={onMenuClick}
       />
 
-      <main
-        style={{
-          flex: 1,
-          padding: "28px 32px 40px",
-          display: "flex",
-          flexDirection: "column",
-          gap: "24px",
-        }}
-      >
+      <main className="flex-1 p-4 md:p-6 lg:px-8 lg:py-7 flex flex-col gap-6">
         {/* Section label */}
         <div
           style={{
@@ -53,7 +64,7 @@ export function DashboardPage() {
               Overview
             </div>
             <div style={{ color: "#556174", fontSize: "0.80rem", marginTop: "3px" }}>
-              Fiscal Year 2025 · June 2026
+              Fiscal Year 2026 · {monthYear}
             </div>
           </div>
           <div
@@ -84,18 +95,24 @@ export function DashboardPage() {
           </div>
         </div>
 
-        <KPICards />
+        <KPICards
+          totalFunding={data?.totalFunding ?? 0}
+          usedFunds={data?.totalExpense ?? 0}
+          remainingFunds={data?.remainingFunds ?? 0}
+          budgetUtilization={data?.budgetUtilization ?? 0}
+          isLoading={isLoading}
+        />
 
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "1.15fr 1fr",
-            gap: "24px",
-            alignItems: "stretch",
-          }}
-        >
-          <BudgetDistribution />
-          <RecentActivity />
+        <div className="grid grid-cols-1 lg:grid-cols-[1.15fr_1fr] gap-6 items-stretch">
+          <BudgetDistribution
+            categories={data?.categories ?? []}
+            totalBudget={data?.totalBudget ?? 0}
+            isLoading={isLoading}
+          />
+          <RecentActivity
+            activities={data?.recentActivity ?? []}
+            isLoading={isLoading}
+          />
         </div>
 
         <div>
@@ -128,10 +145,18 @@ export function DashboardPage() {
               Budget Alerts
             </span>
           </div>
-          <BudgetAlerts />
+          <BudgetAlerts
+            categories={data?.categories ?? []}
+            isLoading={isLoading}
+          />
         </div>
 
-        <BudgetProgress />
+        <BudgetProgress
+          categories={data?.categories ?? []}
+          totalBudget={data?.totalBudget ?? 0}
+          totalRealization={data?.totalExpense ?? 0}
+          isLoading={isLoading}
+        />
       </main>
     </div>
   );
