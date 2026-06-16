@@ -7,7 +7,7 @@ import {
   type RABCategory,
   type ApprovalStatus,
 } from "./rabData";
-import { Search, Plus, Filter, ChevronDown, ChevronUp, Edit3, Trash2, Eye } from "lucide-react";
+import { Search, Plus, Filter, ChevronDown, ChevronUp, Edit3, Trash2, Eye, ExternalLink } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext";
 import { AddBudgetItemModal } from "./AddBudgetItemModal";
 import { deleteBudgetItem } from "../../../services/budget.service";
@@ -1263,7 +1263,20 @@ export function DetailedRABTab({ rabCategories, totalBudget, totalRealization, i
                     <div className="text-sm font-medium text-slate-700 leading-relaxed">{viewItemDetail.targetOutput || "-"}</div>
                   </div>
 
-
+                  {viewItemDetail.referenceUrl && (
+                    <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
+                      <div className="text-[0.7rem] font-bold tracking-widest uppercase text-slate-400 mb-1">Reference URL</div>
+                      <a 
+                        href={viewItemDetail.referenceUrl} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-sm font-medium text-blue-600 hover:text-blue-700 hover:underline flex items-center gap-1.5 break-all"
+                      >
+                        <ExternalLink size={14} className="shrink-0" />
+                        {viewItemDetail.referenceUrl}
+                      </a>
+                    </div>
+                  )}
 
                   <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
                     <div className="text-[0.7rem] font-bold tracking-widest uppercase text-slate-400 mb-1">Person in Charge</div>
