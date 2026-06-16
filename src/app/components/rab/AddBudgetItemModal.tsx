@@ -33,12 +33,12 @@ export function AddBudgetItemModal({ onClose, onSuccess, preselectedCategoryId, 
   const [name, setName] = useState(editItem?.activity ?? "");
   const [quantity, setQuantity] = useState<number>(editItem?.qty ?? 1);
   const [unit, setUnit] = useState(editItem?.unit ?? "Unit");
-  const [unitPrice, setUnitPrice] = useState<number>(editItem?.unitPrice ?? 0);
+  const [unitPrice, setUnitPrice] = useState<number | "">(editItem?.unitPrice ?? 0);
   const [targetAchievement, setTargetAchievement] = useState(editItem?.targetOutput ?? "");
   const [personInCharge, setPersonInCharge] = useState(editItem?.pic ?? "");
   const [referenceUrl, setReferenceUrl] = useState(editItem?.referenceUrl ?? "");
 
-  const plannedAmount = quantity * unitPrice;
+  const plannedAmount = quantity * (Number(unitPrice) || 0);
 
   // Load categories
   useEffect(() => {
@@ -71,7 +71,7 @@ export function AddBudgetItemModal({ onClose, onSuccess, preselectedCategoryId, 
   }, [categoryId, editItem]);
 
   const canSubmit =
-    categoryId && activityId && name.trim() && quantity > 0 && unitPrice > 0 && targetAchievement.trim() && personInCharge.trim();
+    categoryId && activityId && name.trim() && quantity > 0 && unitPrice !== "" && Number(unitPrice) >= 0 && targetAchievement.trim() && personInCharge.trim();
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -88,7 +88,7 @@ export function AddBudgetItemModal({ onClose, onSuccess, preselectedCategoryId, 
         name: name.trim(),
         quantity,
         unit,
-        unit_price: unitPrice,
+        unit_price: Number(unitPrice),
         reference_url: referenceUrl.trim() || null,
         target_achievement: targetAchievement.trim(),
         person_in_charge: personInCharge.trim(),
@@ -99,7 +99,7 @@ export function AddBudgetItemModal({ onClose, onSuccess, preselectedCategoryId, 
         name: name.trim(),
         quantity,
         unit,
-        unit_price: unitPrice,
+        unit_price: Number(unitPrice),
         reference_url: referenceUrl.trim() || undefined,
         target_achievement: targetAchievement.trim(),
         person_in_charge: personInCharge.trim(),
@@ -283,8 +283,8 @@ export function AddBudgetItemModal({ onClose, onSuccess, preselectedCategoryId, 
                 <input
                   type="number"
                   min={0}
-                  value={unitPrice || ""}
-                  onChange={(e) => setUnitPrice(Number(e.target.value) || 0)}
+                  value={unitPrice}
+                  onChange={(e) => setUnitPrice(e.target.value === "" ? "" : Number(e.target.value))}
                   placeholder="0"
                   style={inputStyle}
                 />

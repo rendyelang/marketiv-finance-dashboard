@@ -58,7 +58,7 @@ export function AddTransactionModal({ onClose, onSave, editData }: AddTransactio
   const [date, setDate] = useState(editData?.date || new Date().toISOString().split("T")[0]);
   const [description, setDescription] = useState(editData?.description || "");
   const [category, setCategory] = useState(editData?.category || CATEGORIES[0]);
-  const [amount, setAmount] = useState(editData?.amount ? editData.amount.toLocaleString("id-ID") : "");
+  const [amount, setAmount] = useState(editData?.amount !== undefined ? editData.amount.toLocaleString("id-ID") : "");
   const [pic, setPic] = useState(editData?.pic || "");
   const [status, setStatus] = useState<TransactionStatus>(editData?.status || "Draft");
   const [notes, setNotes] = useState(editData?.notes || "");
