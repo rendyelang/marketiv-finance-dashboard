@@ -16,8 +16,8 @@ export function ProtectedRoute() {
     return <Navigate to="/login" replace />;
   }
 
-  if (profile && profile.status !== "ACTIVE") {
-    // If user is not active (e.g. INVITED but hasn't completed setup)
+  if (profile && profile.status === "INACTIVE") {
+    // If user is disabled/inactive
     return (
       <div className="flex h-screen w-full flex-col items-center justify-center bg-[#fbf7ef] text-[#182033]">
         <div className="rounded-2xl bg-white p-8 shadow-xl text-center">

@@ -5,6 +5,7 @@ import { DashboardPage } from "./components/DashboardPage";
 import { RABPage } from "./components/RABPage";
 import { TransactionsPage } from "./components/TransactionsPage";
 import { UsersPage } from "./components/UsersPage";
+import { AuditTrailPage } from "./components/AuditTrailPage";
 import { useAuth } from "./contexts/AuthContext";
 
 export default function App() {
@@ -61,6 +62,8 @@ export default function App() {
           <Route path="/dashboard" element={<DashboardPage onMenuClick={() => setIsMobileSidebarOpen(true)} />} />
           <Route path="/transactions" element={<TransactionsPage onMenuClick={() => setIsMobileSidebarOpen(true)} />} />
           <Route path="/rab" element={<RABPage onMenuClick={() => setIsMobileSidebarOpen(true)} />} />
+          <Route path="/audit" element={<AuditTrailPage onMenuClick={() => setIsMobileSidebarOpen(true)} />} />
+          <Route path="/audit-trail" element={<Navigate to="/audit" replace />} />
           <Route 
             path="/users" 
             element={

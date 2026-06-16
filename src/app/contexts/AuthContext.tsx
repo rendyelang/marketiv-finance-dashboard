@@ -8,7 +8,7 @@ export interface UserProfile {
   email: string;
   position: string;
   role: "ADMIN" | "MEMBER";
-  status: "ACTIVE" | "INVITED";
+  status: "ACTIVE" | "INVITED" | "INACTIVE";
 }
 
 interface AuthContextType {
@@ -79,7 +79,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (error) {
         console.error("Error fetching user profile:", error);
       } else {
-        setProfile(data as UserProfile);
+        const userProfile = data as UserProfile;
+        
+        // If the user logs in for the first time after an invitation, upgrade status to ACTIVE
+        if (userProfile.status === "INVITED") {
+          const { error: updateError } = await supabase
+            .from("users")
+            .update({ status: "ACTIVE" })
+            .eq("id", userProfile.id);
+            
+          if (!updateError) {
+            userProfile.status = "ACTIVE";
+          } else {
+            console.error("Failed to auto-activate user status (likely RLS restriction):", updateError);
+          }
+        }
+        
+        setProfile(userProfile);
       }
     } catch (error) {
       console.error("Error loading profile:", error);

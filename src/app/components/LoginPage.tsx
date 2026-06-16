@@ -2,12 +2,13 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { useNavigate, Navigate } from "react-router";
 import { toast } from "sonner";
-import { Loader2 } from "lucide-react";
+import { Loader2, Eye, EyeOff } from "lucide-react";
 import { supabase } from "../../lib/supabase";
 import { useAuth } from "../contexts/AuthContext";
 
 export function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
   const { session, isLoading: authLoading } = useAuth();
   const {
@@ -108,12 +109,21 @@ export function LoginPage() {
 
               <div>
                 <label className="block text-sm font-bold text-[#182033] mb-2">Password</label>
-                <input
-                  type="password"
-                  {...register("password", { required: true })}
-                  className="w-full h-12 px-4 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:border-[#fb7a18] focus:ring-2 focus:ring-[#fb7a18]/20 transition-all font-medium text-[#182033]"
-                  placeholder="••••••••"
-                />
+                <div className="relative">
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    {...register("password", { required: true })}
+                    className="w-full h-12 px-4 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:border-[#fb7a18] focus:ring-2 focus:ring-[#fb7a18]/20 transition-all font-medium text-[#182033]"
+                    placeholder="••••••••"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none"
+                  >
+                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
               </div>
 
               <div className="flex items-center justify-between pb-2">
