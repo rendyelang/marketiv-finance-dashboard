@@ -1,45 +1,15 @@
-import { Globe, CheckCircle, FlaskConical } from "lucide-react";
+import { useNavigate } from "react-router";
+import type { DashboardActivityLog } from "../../services/budget.service";
+import { ACTION_META, DEFAULT_META } from "../../constants/activityMeta";
 
-const activities = [
-  {
-    date: "12 June 2026",
-    title: "Domain purchase completed",
-    by: "Rendy",
-    icon: Globe,
-    iconColor: "#ea580c",
-    iconBg: "#fff7ed",
-    iconBorder: "rgba(249,115,22,0.18)",
-    tag: "Completed",
-    tagColor: "#16a34a",
-    tagBg: "rgba(22,163,74,0.09)",
-  },
-  {
-    date: "11 June 2026",
-    title: "Hosting payment approved",
-    by: "Admin",
-    icon: CheckCircle,
-    iconColor: "#16a34a",
-    iconBg: "#f0fdf4",
-    iconBorder: "rgba(22,163,74,0.18)",
-    tag: "Approved",
-    tagColor: "#2563eb",
-    tagBg: "rgba(37,99,235,0.09)",
-  },
-  {
-    date: "10 June 2026",
-    title: "Product research equipment purchased",
-    by: "Team",
-    icon: FlaskConical,
-    iconColor: "#2563eb",
-    iconBg: "#eff6ff",
-    iconBorder: "rgba(37,99,235,0.18)",
-    tag: "Processing",
-    tagColor: "#d97706",
-    tagBg: "rgba(217,119,6,0.09)",
-  },
-];
+interface RecentActivityProps {
+  activities: DashboardActivityLog[];
+  isLoading?: boolean;
+}
 
-export function RecentActivity() {
+export function RecentActivity({ activities, isLoading }: RecentActivityProps) {
+  const navigate = useNavigate();
+
   return (
     <div
       style={{
@@ -112,11 +82,24 @@ export function RecentActivity() {
         />
 
         <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-          {activities.map((activity, i) => {
-            const Icon = activity.icon;
+          {activities.length === 0 && !isLoading && (
+            <div style={{ padding: "20px", textAlign: "center", color: "#737f91", fontSize: "0.85rem" }}>
+              No recent activity
+            </div>
+          )}
+          {activities.map((log) => {
+            const meta = ACTION_META[log.action] || DEFAULT_META;
+            const Icon = meta.icon;
+            const d = new Date(log.created_at);
+            const dateStr = d.toLocaleDateString("en-US", {
+              day: "numeric",
+              month: "long",
+              year: "numeric",
+            });
+
             return (
               <div
-                key={i}
+                key={log.id}
                 style={{
                   display: "grid",
                   gridTemplateColumns: "42px minmax(0,1fr)",
@@ -133,12 +116,12 @@ export function RecentActivity() {
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    background: activity.iconBg,
-                    border: `1px solid ${activity.iconBorder}`,
+                    background: meta.iconBg,
+                    border: `1px solid ${meta.iconBorder}`,
                     boxShadow: "0 8px 20px rgba(15,23,42,0.06)",
                     position: "relative",
                     zIndex: 1,
-                    color: activity.iconColor,
+                    color: meta.iconColor,
                     flexShrink: 0,
                   }}
                 >
@@ -171,7 +154,7 @@ export function RecentActivity() {
                         fontWeight: 600,
                       }}
                     >
-                      {activity.date}
+                      {dateStr}
                     </div>
                     <div
                       style={{
@@ -180,8 +163,8 @@ export function RecentActivity() {
                         gap: "4px",
                         padding: "3px 9px",
                         borderRadius: "999px",
-                        background: activity.tagBg,
-                        color: activity.tagColor,
+                        background: meta.tagBg,
+                        color: meta.tagColor,
                         fontSize: "0.70rem",
                         fontWeight: 700,
                         flexShrink: 0,
@@ -192,10 +175,10 @@ export function RecentActivity() {
                           width: "5px",
                           height: "5px",
                           borderRadius: "999px",
-                          background: activity.tagColor,
+                          background: meta.tagColor,
                         }}
                       />
-                      {activity.tag}
+                      {meta.tag}
                     </div>
                   </div>
                   <div
@@ -207,7 +190,7 @@ export function RecentActivity() {
                       lineHeight: 1.3,
                     }}
                   >
-                    {activity.title}
+                    {meta.label}
                   </div>
                   <div
                     style={{
@@ -217,7 +200,7 @@ export function RecentActivity() {
                       fontWeight: 600,
                     }}
                   >
-                    By {activity.by}
+                    By {log.user_name}
                   </div>
                 </div>
               </div>
@@ -244,6 +227,7 @@ export function RecentActivity() {
           cursor: "pointer",
           letterSpacing: "-0.01em",
         }}
+        onClick={() => navigate("/audit-trail")}
       >
         View All Activity
       </button>
