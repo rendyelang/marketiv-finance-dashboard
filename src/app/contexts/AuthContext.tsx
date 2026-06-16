@@ -81,20 +81,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } else {
         const userProfile = data as UserProfile;
         
-        // If the user logs in for the first time after an invitation, upgrade status to ACTIVE
-        if (userProfile.status === "INVITED") {
-          const { error: updateError } = await supabase
-            .from("users")
-            .update({ status: "ACTIVE" })
-            .eq("id", userProfile.id);
-            
-          if (!updateError) {
-            userProfile.status = "ACTIVE";
-          } else {
-            console.error("Failed to auto-activate user status (likely RLS restriction):", updateError);
-          }
-        }
-        
         setProfile(userProfile);
       }
     } catch (error) {

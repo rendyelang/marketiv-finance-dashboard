@@ -15,6 +15,11 @@ export function ProtectedRoute() {
   if (!session) {
     return <Navigate to="/login" replace />;
   }
+  if (profile && profile.status === "INVITED") {
+    // Force newly invited users to set their password before accessing the app
+    return <Navigate to="/set-password" replace />;
+  }
+
 
   if (profile && profile.status === "INACTIVE") {
     // If user is disabled/inactive

@@ -54,7 +54,7 @@ export function SetPasswordPage() {
       }
 
       toast.success("Password set successfully!");
-      navigate("/dashboard");
+      window.location.href = "/dashboard";
     } catch (error: any) {
       toast.error(error.message || "Failed to set password");
     } finally {
