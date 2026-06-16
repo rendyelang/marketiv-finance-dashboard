@@ -1,21 +1,18 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { TopNav } from "./TopNav";
 import { TransactionDrawer } from "./transactions/TransactionDrawer";
 import { AddTransactionModal } from "./transactions/AddTransactionModal";
 import {
-  transactions,
-  getTotalIncome,
-  getTotalExpenses,
-  getNetBalance,
-  getArchivedCount,
   getStatusStyle,
   CATEGORY_MAP,
   formatRp,
   formatDate,
+  mapDBTransactionToFrontend,
   type Transaction,
   type TransactionType,
   type TransactionStatus,
 } from "./transactions/transactionData";
+import { fetchTransactions } from "../../services/transaction.service";
 import {
   Search,
   Plus,
@@ -30,66 +27,6 @@ import {
   Eye,
   Edit3,
 } from "lucide-react";
-
-const totalIncome = getTotalIncome();
-const totalExpenses = getTotalExpenses();
-const netBalance = getNetBalance();
-const archivedCount = getArchivedCount();
-
-const summaryCards = [
-  {
-    title: "Total Income",
-    value: formatRp(totalIncome),
-    icon: TrendingUp,
-    iconColor: "#16a34a",
-    iconBg: "#f0fdf4",
-    badge: "Completed",
-    badgeColor: "#16a34a",
-    badgeBg: "rgba(22,163,74,0.09)",
-    note: "P2MW funding received",
-    prefix: "+",
-    prefixColor: "#16a34a",
-  },
-  {
-    title: "Total Expenses",
-    value: formatRp(totalExpenses),
-    icon: TrendingDown,
-    iconColor: "#dc2626",
-    iconBg: "#fff5f5",
-    badge: `${transactions.filter((t) => t.type === "Expense" && t.status === "Completed").length} txns`,
-    badgeColor: "#dc2626",
-    badgeBg: "rgba(220,38,38,0.09)",
-    note: "Completed transactions",
-    prefix: "-",
-    prefixColor: "#dc2626",
-  },
-  {
-    title: "Net Balance",
-    value: formatRp(Math.abs(netBalance)),
-    icon: Wallet,
-    iconColor: "#2563eb",
-    iconBg: "#eff6ff",
-    badge: "Available",
-    badgeColor: "#2563eb",
-    badgeBg: "rgba(37,99,235,0.09)",
-    note: "Income minus expenses",
-    prefix: netBalance >= 0 ? "+" : "-",
-    prefixColor: netBalance >= 0 ? "#16a34a" : "#dc2626",
-  },
-  {
-    title: "Archived Transactions",
-    value: String(archivedCount),
-    icon: Archive,
-    iconColor: "#556174",
-    iconBg: "#f3f5f8",
-    badge: "Archived",
-    badgeColor: "#556174",
-    badgeBg: "rgba(85,97,116,0.09)",
-    note: "Cancelled or superseded",
-    prefix: "",
-    prefixColor: "#556174",
-  },
-];
 
 function TypeDot({ type }: { type: TransactionType }) {
   const isIncome = type === "Income";
@@ -120,13 +57,15 @@ function TypeDot({ type }: { type: TransactionType }) {
 function TransactionRow({
   txn,
   onSelect,
+  onEdit,
 }: {
   txn: Transaction;
   onSelect: (t: Transaction) => void;
+  onEdit: (t: Transaction) => void;
 }) {
   const [hovered, setHovered] = useState(false);
   const statusStyle = getStatusStyle(txn.status);
-  const catStyle = CATEGORY_MAP[txn.category];
+  const catStyle = CATEGORY_MAP[txn.category] || { color: "#556174", bg: "#f8fafc", border: "rgba(17,24,39,0.1)" };
   const isIncome = txn.type === "Income";
 
   return (
@@ -368,7 +307,7 @@ function TransactionRow({
           <Eye size={13} />
         </button>
         <button
-          onClick={(e) => e.stopPropagation()}
+          onClick={(e) => { e.stopPropagation(); onEdit(txn); }}
           style={{
             width: "30px",
             height: "30px",
@@ -394,12 +333,94 @@ interface TransactionsPageProps {
 }
 
 export function TransactionsPage({ onMenuClick }: TransactionsPageProps) {
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
   const [selectedTxn, setSelectedTxn] = useState<Transaction | null>(null);
+  const [editingTxn, setEditingTxn] = useState<Transaction | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [search, setSearch] = useState("");
   const [filterType, setFilterType] = useState<TransactionType | "All">("All");
   const [filterStatus, setFilterStatus] = useState<TransactionStatus | "All">("All");
   const [filterCategory, setFilterCategory] = useState("All");
+
+  const loadData = async () => {
+    setIsLoading(true);
+    const { data } = await fetchTransactions();
+    setTransactions(data.map(mapDBTransactionToFrontend));
+    setIsLoading(false);
+  };
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const handleEdit = (txn: Transaction) => {
+    setSelectedTxn(null);
+    setEditingTxn(txn);
+    setShowAddModal(true);
+  };
+
+  const totalIncome = transactions.filter(t => t.type === 'Income' && t.status === 'Completed').reduce((sum, t) => sum + t.amount, 0);
+  const totalExpenses = transactions.filter(t => t.type === 'Expense' && t.status === 'Completed').reduce((sum, t) => sum + t.amount, 0);
+  const netBalance = totalIncome - totalExpenses;
+  const archivedCount = transactions.filter(t => t.status === 'Archived').length;
+  const completedExpenseCount = transactions.filter(t => t.type === 'Expense' && t.status === 'Completed').length;
+
+  const summaryCards = [
+    {
+      title: "Total Income",
+      value: formatRp(totalIncome),
+      icon: TrendingUp,
+      iconColor: "#16a34a",
+      iconBg: "#f0fdf4",
+      badge: "Completed",
+      badgeColor: "#16a34a",
+      badgeBg: "rgba(22,163,74,0.09)",
+      note: "P2MW funding received",
+      prefix: "+",
+      prefixColor: "#16a34a",
+    },
+    {
+      title: "Total Expenses",
+      value: formatRp(totalExpenses),
+      icon: TrendingDown,
+      iconColor: "#dc2626",
+      iconBg: "#fff5f5",
+      badge: `${completedExpenseCount} txns`,
+      badgeColor: "#dc2626",
+      badgeBg: "rgba(220,38,38,0.09)",
+      note: "Completed transactions",
+      prefix: "-",
+      prefixColor: "#dc2626",
+    },
+    {
+      title: "Net Balance",
+      value: formatRp(Math.abs(netBalance)),
+      icon: Wallet,
+      iconColor: "#2563eb",
+      iconBg: "#eff6ff",
+      badge: "Available",
+      badgeColor: "#2563eb",
+      badgeBg: "rgba(37,99,235,0.09)",
+      note: "Income minus expenses",
+      prefix: netBalance >= 0 ? "+" : "-",
+      prefixColor: netBalance >= 0 ? "#16a34a" : "#dc2626",
+    },
+    {
+      title: "Archived Transactions",
+      value: String(archivedCount),
+      icon: Archive,
+      iconColor: "#556174",
+      iconBg: "#f3f5f8",
+      badge: "Archived",
+      badgeColor: "#556174",
+      badgeBg: "rgba(85,97,116,0.09)",
+      note: "Cancelled or superseded",
+      prefix: "",
+      prefixColor: "#556174",
+    },
+  ];
 
   const categories = ["All", ...Object.keys(CATEGORY_MAP)];
 
@@ -415,7 +436,7 @@ export function TransactionsPage({ onMenuClick }: TransactionsPageProps) {
       const matchCat = filterCategory === "All" || t.category === filterCategory;
       return matchSearch && matchType && matchStatus && matchCat;
     });
-  }, [search, filterType, filterStatus, filterCategory]);
+  }, [transactions, search, filterType, filterStatus, filterCategory]);
 
   const filteredIncome = filtered.filter((t) => t.type === "Income" && t.status === "Completed").reduce((s, t) => s + t.amount, 0);
   const filteredExpenses = filtered.filter((t) => t.type === "Expense" && t.status === "Completed").reduce((s, t) => s + t.amount, 0);
@@ -581,7 +602,10 @@ export function TransactionsPage({ onMenuClick }: TransactionsPageProps) {
               </div>
             </div>
             <button
-              onClick={() => setShowAddModal(true)}
+              onClick={() => {
+                setEditingTxn(null);
+                setShowAddModal(true);
+              }}
               style={{
                 display: "flex",
                 alignItems: "center",
@@ -840,7 +864,7 @@ export function TransactionsPage({ onMenuClick }: TransactionsPageProps) {
               </div>
             ) : (
               filtered.map((txn) => (
-                <TransactionRow key={txn.id} txn={txn} onSelect={setSelectedTxn} />
+                <TransactionRow key={txn.id} txn={txn} onSelect={setSelectedTxn} onEdit={handleEdit} />
               ))
             )}
           </div>
@@ -933,15 +957,33 @@ export function TransactionsPage({ onMenuClick }: TransactionsPageProps) {
         </div>
       </main>
 
-      {/* Drawer */}
-      <TransactionDrawer
-        transaction={selectedTxn}
-        onClose={() => setSelectedTxn(null)}
-      />
-
-      {/* Add Modal */}
+      {/* Add / Edit Transaction Modal */}
       {showAddModal && (
-        <AddTransactionModal onClose={() => setShowAddModal(false)} />
+        <AddTransactionModal
+          onClose={() => {
+            setShowAddModal(false);
+            setEditingTxn(null);
+          }}
+          onSave={() => {
+            setShowAddModal(false);
+            setEditingTxn(null);
+            loadData();
+          }}
+          editData={editingTxn}
+        />
+      )}
+
+      {/* Transaction Details Drawer */}
+      {selectedTxn && (
+        <TransactionDrawer
+          transaction={selectedTxn}
+          onClose={() => setSelectedTxn(null)}
+          onEdit={() => handleEdit(selectedTxn)}
+          onAttachmentDeleted={() => {
+            loadData();
+            setSelectedTxn(null);
+          }}
+        />
       )}
     </div>
   );

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   X,
   ArrowUpCircle,
@@ -10,12 +10,14 @@ import {
   Check,
   Link2,
 } from "lucide-react";
-import { type TransactionType, type TransactionStatus, CATEGORY_MAP } from "./transactionData";
+import { type TransactionType, type TransactionStatus, type Transaction, CATEGORY_MAP } from "./transactionData";
 import { fetchRABData, type RABCategoryView } from "../../../services/budget.service";
+import { addTransaction, updateTransaction, uploadAttachment } from "../../../services/transaction.service";
 
 interface AddTransactionModalProps {
   onClose: () => void;
   onSave?: (data: any) => void;
+  editData?: Transaction | null;
 }
 
 const CATEGORIES = Object.keys(CATEGORY_MAP);
@@ -49,34 +51,45 @@ function fmt(n: number) {
   return `Rp ${n.toLocaleString("id-ID")}`;
 }
 
-export function AddTransactionModal({ onClose, onSave }: AddTransactionModalProps) {
-  const [txType, setTxType] = useState<TransactionType>("Expense");
-  const [date, setDate] = useState("2026-06-13");
-  const [description, setDescription] = useState("");
-  const [category, setCategory] = useState(CATEGORIES[0]);
-  const [amount, setAmount] = useState("");
-  const [pic, setPic] = useState("");
-  const [status, setStatus] = useState<TransactionStatus>("Draft");
-  const [notes, setNotes] = useState("");
+export function AddTransactionModal({ onClose, onSave, editData }: AddTransactionModalProps) {
+  const isEditing = !!editData;
+  const [txType, setTxType] = useState<TransactionType>(editData?.type || "Expense");
+  // Default to today if new, or existing date
+  const [date, setDate] = useState(editData?.date || new Date().toISOString().split("T")[0]);
+  const [description, setDescription] = useState(editData?.description || "");
+  const [category, setCategory] = useState(editData?.category || CATEGORIES[0]);
+  const [amount, setAmount] = useState(editData?.amount ? editData.amount.toLocaleString("id-ID") : "");
+  const [pic, setPic] = useState(editData?.pic || "");
+  const [status, setStatus] = useState<TransactionStatus>(editData?.status || "Draft");
+  const [notes, setNotes] = useState(editData?.notes || "");
+  const [files, setFiles] = useState<File[]>([]);
+  const [isSaving, setIsSaving] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // RAB linkage state
-  const [relatedItemId, setRelatedItemId] = useState<string | null>(null);
+  const [relatedItemId, setRelatedItemId] = useState<string | null>(editData?.relatedItemId || null);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [itemSearch, setItemSearch] = useState("");
   const [rabCategories, setRabCategories] = useState<RABCategoryView[]>([]);
+  const isInitialMount = useRef(true);
 
   // Load RAB data for budget item selection
   useEffect(() => {
     (async () => {
       const result = await fetchRABData();
-      if (!result.error) {
+      if (!result.error && result.categories.length > 0) {
         setRabCategories(result.categories);
+        if (!isEditing) setCategory(result.categories[0].name);
       }
     })();
-  }, []);
+  }, [isEditing]);
 
   // Reset RAB item when category or type changes
   useEffect(() => {
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
+    }
     setRelatedItemId(null);
     setDropdownOpen(false);
     setItemSearch("");
@@ -90,6 +103,9 @@ export function AddTransactionModal({ onClose, onSave }: AddTransactionModalProp
     totalAmount: item.totalAmount,
     usedAmount: item.usedAmount,
     status: item.status,
+    qty: item.qty,
+    unit: item.unit,
+    itemType: item.itemType,
     color: selectedRabCategory?.color ?? "#f97316",
   }));
   const filteredItems = availableItems.filter(
@@ -101,9 +117,62 @@ export function AddTransactionModal({ onClose, onSave }: AddTransactionModalProp
   const selectedItem = availableItems.find((i) => i.id === relatedItemId) ?? null;
   const catColor = selectedRabCategory?.color ?? "#f97316";
 
-  const handleSave = () => {
-    onSave?.({ txType, date, description, category, relatedItemId, amount, pic, status, notes });
-    onClose();
+  const handleSave = async () => {
+    if (txType === "Expense" && !relatedItemId) {
+      alert("Expense transactions require a related budget item.");
+      return;
+    }
+
+    const payload = {
+      type: txType,
+      date,
+      amount: parseFloat(amount.replace(/\./g, "").replace(/,/g, ".")) || 0,
+      description,
+      budget_item_id: txType === "Expense" ? (relatedItemId || null) : null,
+      person_in_charge: pic,
+      status,
+      notes,
+    };
+
+    setIsSaving(true);
+    try {
+      let result;
+      if (isEditing && editData) {
+        result = await updateTransaction(editData.id, payload);
+      } else {
+        result = await addTransaction(payload);
+      }
+
+      if (result.error || !result.data) {
+        throw new Error(result.error || "Failed to save transaction to database");
+      }
+
+      const tx = result.data;
+      if (tx && files.length > 0) {
+        let uploadErrors = [];
+        for (const file of files) {
+          const res = await uploadAttachment(tx.id, file);
+          if (res.error) uploadErrors.push(`${file.name}: ${res.error}`);
+        }
+        if (uploadErrors.length > 0) {
+          alert("Transaction saved, but some attachments failed to upload:\n" + uploadErrors.join("\n"));
+        }
+      }
+
+      onSave?.(tx);
+      onClose();
+    } catch (err) {
+      console.error(err);
+      alert("An unexpected error occurred: " + (err instanceof Error ? err.message : err));
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      setFiles((prev) => [...prev, ...Array.from(e.target.files!)]);
+    }
   };
 
   return (
@@ -162,10 +231,10 @@ export function AddTransactionModal({ onClose, onSave }: AddTransactionModalProp
                 lineHeight: 1,
               }}
             >
-              Add Transaction
+              {isEditing ? "Edit Transaction" : "Add Transaction"}
             </div>
             <div style={{ color: "#556174", fontSize: "0.80rem", marginTop: "5px", fontWeight: 500 }}>
-              Record a new financial transaction to the system
+              {isEditing ? "Update details for this financial record" : "Record a new financial transaction to the system"}
             </div>
           </div>
           <button
@@ -253,10 +322,14 @@ export function AddTransactionModal({ onClose, onSave }: AddTransactionModalProp
             <div>
               <label style={labelStyle}>Amount (Rp)</label>
               <input
-                type="number"
-                placeholder="e.g. 500000"
+                type="text"
+                inputMode="numeric"
+                placeholder="e.g. 500.000"
                 value={amount}
-                onChange={(e) => setAmount(e.target.value)}
+                onChange={(e) => {
+                  const val = e.target.value.replace(/[^0-9]/g, "");
+                  setAmount(val ? Number(val).toLocaleString("id-ID") : "");
+                }}
                 style={fieldStyle}
               />
             </div>
@@ -280,17 +353,27 @@ export function AddTransactionModal({ onClose, onSave }: AddTransactionModalProp
               <label style={labelStyle}>Budget Category</label>
               <div style={{ position: "relative" }}>
                 <select
-                  value={category}
+                  value={txType === "Income" ? "—" : category}
                   onChange={(e) => setCategory(e.target.value)}
-                  style={{ ...fieldStyle, paddingRight: "36px", appearance: "none" as const }}
+                  style={{
+                    ...fieldStyle,
+                    paddingRight: "36px",
+                    appearance: "none" as const,
+                    opacity: txType === "Income" ? 0.6 : 1,
+                    cursor: txType === "Income" ? "not-allowed" : "pointer",
+                    background: txType === "Income" ? "#e2e8f0" : "rgba(248,250,252,0.8)",
+                  }}
                   disabled={txType === "Income"}
                 >
-                  {CATEGORIES.map((c) => (
-                    <option key={c} value={c}>
-                      {c}
-                    </option>
-                  ))}
-                  {txType === "Income" && <option value="—">— (Income)</option>}
+                  {txType === "Income" ? (
+                    <option value="—">— (Not Applicable for Income)</option>
+                  ) : (
+                    rabCategories.map((c) => (
+                      <option key={c.id} value={c.name}>
+                        {c.name}
+                      </option>
+                    ))
+                  )}
                 </select>
                 <ChevronDown
                   size={14}
@@ -1031,7 +1114,16 @@ export function AddTransactionModal({ onClose, onSave }: AddTransactionModalProp
           {/* Attachment upload */}
           <div>
             <label style={labelStyle}>Supporting Documents</label>
+            <input
+              type="file"
+              multiple
+              ref={fileInputRef}
+              onChange={handleFileSelect}
+              style={{ display: "none" }}
+              accept=".pdf,.jpg,.jpeg,.png,.webp"
+            />
             <div
+              onClick={() => fileInputRef.current?.click()}
               style={{
                 padding: "20px",
                 borderRadius: "16px",
@@ -1072,6 +1164,36 @@ export function AddTransactionModal({ onClose, onSave }: AddTransactionModalProp
                 PDF, JPG, PNG, WEBP · Max 10 MB each
               </div>
             </div>
+            
+            {files.length > 0 && (
+              <div style={{ marginTop: "12px", display: "flex", flexDirection: "column", gap: "8px" }}>
+                {files.map((f, i) => (
+                  <div key={i} style={{ fontSize: "0.78rem", color: "#34435d", display: "flex", alignItems: "center", justifyContent: "space-between", background: "white", padding: "8px 12px", borderRadius: "8px", border: "1px solid #eef2f7" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px", minWidth: 0 }}>
+                      <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{f.name}</span>
+                      <span style={{ color: "#737f91", flexShrink: 0 }}>{(f.size / 1024 / 1024).toFixed(2)} MB</span>
+                    </div>
+                    <button
+                      onClick={() => setFiles((prev) => prev.filter((_, index) => index !== i))}
+                      style={{
+                        background: "none",
+                        border: "none",
+                        color: "#dc2626",
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        padding: "4px",
+                        flexShrink: 0
+                      }}
+                      title="Remove file"
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
@@ -1090,6 +1212,7 @@ export function AddTransactionModal({ onClose, onSave }: AddTransactionModalProp
         >
           <button
             onClick={onClose}
+            disabled={isSaving}
             style={{
               height: "44px",
               padding: "0 22px",
@@ -1104,12 +1227,14 @@ export function AddTransactionModal({ onClose, onSave }: AddTransactionModalProp
               fontWeight: 700,
               cursor: "pointer",
               letterSpacing: "-0.01em",
+              opacity: isSaving ? 0.6 : 1,
             }}
           >
             Cancel
           </button>
           <button
             onClick={handleSave}
+            disabled={isSaving}
             style={{
               height: "44px",
               padding: "0 22px",
@@ -1126,10 +1251,11 @@ export function AddTransactionModal({ onClose, onSave }: AddTransactionModalProp
               display: "flex",
               alignItems: "center",
               gap: "7px",
+              opacity: isSaving ? 0.6 : 1,
             }}
           >
             <Plus size={15} />
-            Save Transaction
+            {isSaving ? "Saving..." : isEditing ? "Update Transaction" : "Save Transaction"}
           </button>
         </div>
       </div>

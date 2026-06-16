@@ -1,11 +1,11 @@
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts";
 
 const data = [
-  { name: "Product Development & Research", value: 40, color: "#f97316", amount: "Rp 8.000.000" },
-  { name: "Production", value: 25, color: "#2563eb", amount: "Rp 5.000.000" },
-  { name: "Company Legalization", value: 12.5, color: "#7c3aed", amount: "Rp 2.500.000" },
-  { name: "HR Certification", value: 12.5, color: "#16a34a", amount: "Rp 2.500.000" },
-  { name: "Office Supplies & Support", value: 10, color: "#d97706", amount: "Rp 2.000.000" },
+  { name: "Pengembangan Produk/Riset", value: 40, color: "#f97316", amount: "Rp 8.000.000" },
+  { name: "Produksi", value: 25, color: "#2563eb", amount: "Rp 5.000.000" },
+  { name: "Legalitas, Perizinan, Sertifikasi", value: 12.5, color: "#7c3aed", amount: "Rp 2.500.000" },
+  { name: "Peningkatan Kompetensi SDM Bersertifikasi", value: 12.5, color: "#16a34a", amount: "Rp 2.500.000" },
+  { name: "ATK dan Penunjang", value: 10, color: "#d97706", amount: "Rp 2.000.000" },
 ];
 
 const CustomTooltip = ({ active, payload }: any) => {

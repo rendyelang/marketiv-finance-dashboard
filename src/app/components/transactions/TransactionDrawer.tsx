@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import {
   X,
   FileText,
@@ -25,6 +25,7 @@ import {
   formatRp,
   formatDate,
 } from "./transactionData";
+import { deleteAttachment, uploadAttachment, fetchTransactionActivityLogs } from "../../../services/transaction.service";
 
 function FileIcon({ fileType }: { fileType: string }) {
   const isPdf = fileType === "PDF";
@@ -48,8 +49,22 @@ function FileIcon({ fileType }: { fileType: string }) {
   );
 }
 
-function AttachmentCard({ att }: { att: Attachment }) {
+function AttachmentCard({ att, onDelete }: { att: Attachment; onDelete?: (id: string, url: string) => void }) {
   const [hovered, setHovered] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const fileExt = att.name.split(".").pop()?.toUpperCase() || "FILE";
+  const isPdf = fileExt === "PDF";
+
+  const handleDelete = async () => {
+    if (!onDelete) return;
+    if (confirm("Are you sure you want to delete this attachment?")) {
+      setIsDeleting(true);
+      await onDelete(att.id, att.fileUrl);
+      setIsDeleting(false);
+    }
+  };
+
   return (
     <div
       onMouseEnter={() => setHovered(true)}
@@ -63,9 +78,10 @@ function AttachmentCard({ att }: { att: Attachment }) {
         display: "flex",
         alignItems: "center",
         gap: "12px",
+        opacity: isDeleting ? 0.5 : 1,
       }}
     >
-      <FileIcon fileType={att.fileType} />
+      <FileIcon fileType={fileExt} />
 
       <div style={{ flex: 1, minWidth: 0 }}>
         <div
@@ -101,22 +117,7 @@ function AttachmentCard({ att }: { att: Attachment }) {
               fontWeight: 700,
             }}
           >
-            {att.fileType}
-          </span>
-          <span
-            style={{
-              padding: "2px 8px",
-              borderRadius: "6px",
-              background: "#f3f5f8",
-              color: "#556174",
-              fontSize: "0.68rem",
-              fontWeight: 700,
-            }}
-          >
-            {att.category}
-          </span>
-          <span style={{ fontSize: "0.72rem", color: "#737f91", fontWeight: 600 }}>
-            {att.size}
+            {fileExt}
           </span>
         </div>
         <div
@@ -127,12 +128,15 @@ function AttachmentCard({ att }: { att: Attachment }) {
             fontWeight: 600,
           }}
         >
-          {att.uploadDate} · {att.uploadTime} · by {att.uploadedBy}
+          {att.uploadDate} · {att.uploadTime}
         </div>
       </div>
 
       <div style={{ display: "flex", gap: "6px", flexShrink: 0 }}>
-        <button
+        <a
+          href={att.fileUrl}
+          target="_blank"
+          rel="noopener noreferrer"
           style={{
             width: "32px",
             height: "32px",
@@ -149,24 +153,28 @@ function AttachmentCard({ att }: { att: Attachment }) {
           title="Download"
         >
           <Download size={13} />
-        </button>
-        <button
-          style={{
-            width: "32px",
-            height: "32px",
-            borderRadius: "10px",
-            background: "rgba(220,38,38,0.06)",
-            border: "1px solid rgba(220,38,38,0.12)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            cursor: "pointer",
-            color: "#dc2626",
-          }}
-          title="Delete"
-        >
-          <Trash2 size={13} />
-        </button>
+        </a>
+        {onDelete && (
+          <button
+            onClick={handleDelete}
+            disabled={isDeleting}
+            style={{
+              width: "32px",
+              height: "32px",
+              borderRadius: "10px",
+              background: "rgba(220,38,38,0.06)",
+              border: "1px solid rgba(220,38,38,0.12)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              cursor: "pointer",
+              color: "#dc2626",
+            }}
+            title="Delete"
+          >
+            <Trash2 size={13} />
+          </button>
+        )}
       </div>
     </div>
   );
@@ -260,7 +268,7 @@ function HistoryTimeline({ items }: { items: Transaction["history"] }) {
                   }}
                 >
                   <User size={10} />
-                  {item.user}
+                  {item.user || "System"}
                 </span>
                 <span
                   style={{
@@ -287,23 +295,63 @@ function HistoryTimeline({ items }: { items: Transaction["history"] }) {
 interface TransactionDrawerProps {
   transaction: Transaction | null;
   onClose: () => void;
+  onAttachmentDeleted?: () => void;
+  onEdit?: () => void;
 }
 
 type DrawerTab = "details" | "attachments" | "history";
 
-export function TransactionDrawer({ transaction, onClose }: TransactionDrawerProps) {
+export function TransactionDrawer({ transaction, onClose, onAttachmentDeleted, onEdit }: TransactionDrawerProps) {
   const [activeTab, setActiveTab] = useState<DrawerTab>("details");
+  const [isUploading, setIsUploading] = useState(false);
+  const [historyLogs, setHistoryLogs] = useState<Transaction["history"]>(transaction?.history || []);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   if (!transaction) return null;
 
+  useEffect(() => {
+    if (activeTab === "history") {
+      setIsLoadingHistory(true);
+      fetchTransactionActivityLogs(transaction.id).then((res) => {
+        if (!res.error) {
+          const mappedLogs = res.data.map((log: any) => {
+            const d = new Date(log.created_at);
+            return {
+              id: log.id,
+              date: d.toLocaleDateString("en-CA"),
+              time: d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+              action: log.action,
+              user: log.user_name || "System",
+            };
+          });
+          setHistoryLogs(mappedLogs);
+        }
+        setIsLoadingHistory(false);
+      });
+    }
+  }, [activeTab, transaction.id]);
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0 && transaction) {
+      setIsUploading(true);
+      for (const file of Array.from(e.target.files)) {
+        const { error } = await uploadAttachment(transaction.id, file);
+        if (error) alert("Upload error: " + error);
+      }
+      setIsUploading(false);
+      onAttachmentDeleted?.(); // Refresh data
+    }
+  };
+
   const isIncome = transaction.type === "Income";
   const statusStyle = getStatusStyle(transaction.status);
-  const catStyle = CATEGORY_MAP[transaction.category];
+  const catStyle = CATEGORY_MAP[transaction.category] || { color: "#556174", bg: "#f8fafc", border: "rgba(17,24,39,0.1)" };
 
   const drawerTabs: { id: DrawerTab; label: string; count?: number }[] = [
     { id: "details", label: "Details" },
     { id: "attachments", label: "Documents", count: transaction.attachments.length },
-    { id: "history", label: "Activity", count: transaction.history.length },
+    { id: "history", label: "Activity", count: historyLogs.length },
   ];
 
   return (
@@ -384,23 +432,26 @@ export function TransactionDrawer({ transaction, onClose }: TransactionDrawerPro
               </div>
             </div>
             <div style={{ display: "flex", gap: "8px" }}>
-              <button
-                style={{
-                  width: "34px",
-                  height: "34px",
-                  borderRadius: "11px",
-                  background: "white",
-                  border: "1px solid rgba(17,24,39,0.09)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  cursor: "pointer",
-                  color: "#556174",
-                  boxShadow: "0 4px 12px rgba(15,23,42,0.06)",
-                }}
-              >
-                <Edit3 size={14} />
-              </button>
+              {onEdit && (
+                <button
+                  onClick={onEdit}
+                  style={{
+                    width: "34px",
+                    height: "34px",
+                    borderRadius: "11px",
+                    background: "white",
+                    border: "1px solid rgba(17,24,39,0.09)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    cursor: "pointer",
+                    color: "#556174",
+                    boxShadow: "0 4px 12px rgba(15,23,42,0.06)",
+                  }}
+                >
+                  <Edit3 size={14} />
+                </button>
+              )}
               <button
                 onClick={onClose}
                 style={{
@@ -810,11 +861,34 @@ export function TransactionDrawer({ transaction, onClose }: TransactionDrawerPro
                   </div>
                 </div>
               ) : (
-                transaction.attachments.map((att) => <AttachmentCard key={att.id} att={att} />)
+                transaction.attachments.map((att) => (
+                  <AttachmentCard 
+                    key={att.id} 
+                    att={att} 
+                    onDelete={async (id, url) => {
+                      const { success, error } = await deleteAttachment(id, url);
+                      if (success) {
+                        onAttachmentDeleted?.();
+                      } else {
+                        alert("Failed to delete attachment: " + error);
+                      }
+                    }} 
+                  />
+                ))
               )}
 
               {/* Upload area */}
+              <input 
+                type="file" 
+                multiple 
+                ref={fileInputRef} 
+                onChange={handleFileUpload} 
+                style={{ display: "none" }} 
+                accept=".pdf,.jpg,.jpeg,.png,.webp"
+              />
               <button
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isUploading}
                 style={{
                   display: "flex",
                   alignItems: "center",
@@ -831,10 +905,11 @@ export function TransactionDrawer({ transaction, onClose }: TransactionDrawerPro
                   cursor: "pointer",
                   transition: "0.18s",
                   marginTop: "4px",
+                  opacity: isUploading ? 0.6 : 1,
                 }}
               >
                 <Upload size={15} />
-                Upload Document
+                {isUploading ? "Uploading..." : "Upload Document"}
               </button>
 
               <div
@@ -854,8 +929,17 @@ export function TransactionDrawer({ transaction, onClose }: TransactionDrawerPro
 
           {/* HISTORY TAB */}
           {activeTab === "history" && (
-            <div>
-              <HistoryTimeline items={transaction.history} />
+            <div style={{ padding: "20px 24px" }}>
+              <div style={{ color: "#182033", fontSize: "0.95rem", fontWeight: 700, marginBottom: "20px" }}>
+                Transaction History
+              </div>
+              {isLoadingHistory ? (
+                <div style={{ fontSize: "0.85rem", color: "#737f91" }}>Loading activity...</div>
+              ) : historyLogs.length === 0 ? (
+                <div style={{ fontSize: "0.85rem", color: "#737f91" }}>No activity recorded yet.</div>
+              ) : (
+                <HistoryTimeline items={historyLogs} />
+              )}
             </div>
           )}
         </div>

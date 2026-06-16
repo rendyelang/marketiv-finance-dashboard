@@ -18,6 +18,7 @@ import {
   type RABCategory,
 } from "./rabData";
 import { TrendingUp, AlertTriangle, CheckCircle2, Download, ArrowUpRight } from "lucide-react";
+import { RealizationDrawer } from "./RealizationDrawer";
 
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
@@ -135,6 +136,7 @@ interface RealizationTabProps {
 
 export function RealizationTab({ rabCategories, totalBudget, totalRealization, isLoading }: RealizationTabProps) {
   const [hoveredRow, setHoveredRow] = useState<string | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<{ id: string; name: string; budget: number; realization: number; itemIds: string[] } | null>(null);
 
   const totalRemaining = totalBudget - totalRealization;
   const overallPct = totalBudget > 0 ? Math.round((totalRealization / totalBudget) * 100) : 0;
@@ -583,8 +585,15 @@ export function RealizationTab({ rabCategories, totalBudget, totalRealization, i
                   transition: "0.18s cubic-bezier(.2,.8,.2,1)",
                   alignItems: "center",
                   marginBottom: "4px",
-                  cursor: "default",
+                  cursor: "pointer",
                 }}
+                onClick={() => setSelectedCategory({
+                  id: cat.id,
+                  name: cat.name,
+                  budget: cat.budget,
+                  realization: realization,
+                  itemIds: cat.items.map(item => item.id)
+                })}
               >
                 {/* Category */}
                 <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
@@ -1052,6 +1061,13 @@ export function RealizationTab({ rabCategories, totalBudget, totalRealization, i
             })}
         </div>
       )}
+
+      {/* Realization Drill-down Drawer */}
+      <RealizationDrawer 
+        isOpen={!!selectedCategory}
+        onClose={() => setSelectedCategory(null)}
+        category={selectedCategory}
+      />
     </div>
   );
 }

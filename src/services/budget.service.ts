@@ -175,7 +175,7 @@ export async function fetchRABData(): Promise<{
     supabase
       .from("transactions")
       .select("budget_item_id, amount")
-      .eq("type", "expense"),
+      .in("type", ["Expense", "expense"]),
   ]);
 
   // Check for errors

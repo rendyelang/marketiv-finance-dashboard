@@ -7,19 +7,25 @@ import {
   type RABCategory,
   type ApprovalStatus,
 } from "./rabData";
-import { Search, Plus, Filter, ChevronDown, ChevronUp, Edit3, Trash2 } from "lucide-react";
+import { Search, Plus, Filter, ChevronDown, ChevronUp, Edit3, Trash2, Eye } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext";
 import { AddBudgetItemModal } from "./AddBudgetItemModal";
 import { deleteBudgetItem } from "../../../services/budget.service";
 import { toast } from "sonner";
+import {
+  Drawer,
+  DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerClose,
+} from "../ui/drawer";
 
 const COL_GRID =
-  "36px minmax(180px,2.2fr) 92px 64px 124px 124px minmax(110px,1.1fr) 106px 110px 124px minmax(100px,1fr)";
+  "36px minmax(200px,2.5fr) 70px 130px 130px minmax(110px,1.2fr) 110px 110px 130px";
 
 const COL_HEADERS = [
   "#",
   "Activity",
-  "Type",
   "Qty",
   "Unit Price",
   "Total",
@@ -27,7 +33,6 @@ const COL_HEADERS = [
   "PIC",
   "Status",
   "Used",
-  "Justification",
 ];
 
 function TypeBadge({ type }: { type: string }) {
@@ -139,6 +144,7 @@ function ItemRow({
   isAdmin,
   onEdit,
   onDelete,
+  onViewDetail,
 }: {
   item: RABItem;
   index: number;
@@ -146,6 +152,7 @@ function ItemRow({
   isAdmin: boolean;
   onEdit: () => void;
   onDelete: () => void;
+  onViewDetail: () => void;
 }) {
   const [hovered, setHovered] = useState(false);
   const remaining = item.totalAmount - item.usedAmount;
@@ -211,10 +218,7 @@ function ItemRow({
         </div>
       </div>
 
-      {/* Type */}
-      <div style={{ overflow: "hidden" }}>
-        <TypeBadge type={item.itemType} />
-      </div>
+      {/* Type Removed */}
 
       {/* Qty */}
       <div
@@ -364,20 +368,7 @@ function ItemRow({
         )}
       </div>
 
-      {/* Justification */}
-      <div
-        style={{
-          fontSize: "0.78rem",
-          color: "#737f91",
-          fontWeight: 500,
-          overflow: "hidden",
-          textOverflow: "ellipsis",
-          whiteSpace: "nowrap",
-        }}
-        title={item.justification}
-      >
-        {item.justification}
-      </div>
+      {/* Justification Removed */}
 
       {/* Hover actions */}
       {hovered && (
@@ -397,6 +388,24 @@ function ItemRow({
             zIndex: 2,
           }}
         >
+          <button
+            onClick={onViewDetail}
+            style={{
+              width: "28px",
+              height: "28px",
+              borderRadius: "8px",
+              background: "#f3f5f8",
+              border: "none",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              color: "#556174",
+            }}
+            title="View Details"
+          >
+            <Eye size={13} />
+          </button>
           {isAdmin && (
             <>
               <button
@@ -480,7 +489,6 @@ function SubtotalRow({
       </div>
       <div />
       <div />
-      <div />
       <div
         style={{
           fontFamily: "'Sora', sans-serif",
@@ -497,7 +505,7 @@ function SubtotalRow({
           display: "flex",
           alignItems: "center",
           gap: "8px",
-          gridColumn: "7 / 10",
+          gridColumn: "6 / 9",
         }}
       >
         <div style={{ flex: 1, height: "6px", borderRadius: "999px", background: "#eef2f7", overflow: "hidden" }}>
@@ -522,27 +530,29 @@ function SubtotalRow({
           {pct}%
         </span>
       </div>
-      <div
-        style={{
-          fontFamily: "'Sora', sans-serif",
-          fontSize: "0.88rem",
-          fontWeight: 800,
-          color: "#182033",
-          letterSpacing: "-0.03em",
-        }}
-      >
-        {formatRp(used)}
-      </div>
-      <div
-        style={{
-          fontSize: "0.80rem",
-          fontWeight: 700,
-          color: "#16a34a",
-          letterSpacing: "-0.02em",
-          fontFamily: "'Sora', sans-serif",
-        }}
-      >
-        {formatRp(remaining)} left
+      <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+        <div
+          style={{
+            fontFamily: "'Sora', sans-serif",
+            fontSize: "0.88rem",
+            fontWeight: 800,
+            color: "#182033",
+            letterSpacing: "-0.03em",
+          }}
+        >
+          {formatRp(used)}
+        </div>
+        <div
+          style={{
+            fontSize: "0.75rem",
+            fontWeight: 700,
+            color: "#16a34a",
+            letterSpacing: "-0.02em",
+            fontFamily: "'Sora', sans-serif",
+          }}
+        >
+          {formatRp(remaining)} left
+        </div>
       </div>
     </div>
   );
@@ -563,6 +573,7 @@ export function DetailedRABTab({ rabCategories, totalBudget, totalRealization, i
   const [showAddModal, setShowAddModal] = useState(false);
   const [addModalCategoryId, setAddModalCategoryId] = useState<string | undefined>();
   const [editItemData, setEditItemData] = useState<(RABItem & { categoryId: string }) | null>(null);
+  const [viewItemDetail, setViewItemDetail] = useState<RABItem | null>(null);
   const { profile } = useAuth();
   const isAdmin = profile?.role === "ADMIN";
 
@@ -917,6 +928,7 @@ export function DetailedRABTab({ rabCategories, totalBudget, totalRealization, i
                           isAdmin={isAdmin}
                           onEdit={() => setEditItemData({ ...item, categoryId: cat.id })}
                           onDelete={() => handleDeleteItem(item.id)}
+                          onViewDetail={() => setViewItemDetail(item)}
                         />
                       ))}
                     </div>
@@ -1152,6 +1164,98 @@ export function DetailedRABTab({ rabCategories, totalBudget, totalRealization, i
           editItem={editItemData ?? undefined}
         />
       )}
+
+      {/* Detail Drawer */}
+      <Drawer
+        direction="right"
+        open={!!viewItemDetail}
+        onOpenChange={(isOpen) => {
+          if (!isOpen) setViewItemDetail(null);
+        }}
+      >
+        <DrawerContent className="w-full sm:max-w-md h-full overflow-hidden flex flex-col bg-slate-50 border-l border-slate-200">
+          <DrawerHeader className="bg-white border-b border-slate-100 px-6 py-5 flex items-start justify-between shrink-0">
+            <div>
+              <DrawerTitle className="text-lg font-bold text-slate-900 leading-tight">
+                {viewItemDetail?.activity}
+              </DrawerTitle>
+              <div className="text-sm font-semibold text-slate-500 mt-1">
+                {viewItemDetail?.mainActivity}
+              </div>
+            </div>
+            <DrawerClose asChild>
+              <button className="w-8 h-8 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center hover:bg-slate-200 transition-colors">
+                <span className="sr-only">Close</span>
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M13 1L1 13M1 1L13 13" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </button>
+            </DrawerClose>
+          </DrawerHeader>
+
+          <div className="flex-1 overflow-y-auto p-6 space-y-5">
+            {viewItemDetail && (
+              <>
+                <div className="grid grid-cols-1 gap-4">
+                  <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
+                    <div className="text-[0.7rem] font-bold tracking-widest uppercase text-slate-400 mb-1">Status</div>
+                    <div><StatusBadge status={viewItemDetail.status} /></div>
+                  </div>
+                </div>
+
+                <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm space-y-4">
+                  <div className="flex justify-between items-center border-b border-slate-50 pb-3">
+                    <span className="text-sm font-semibold text-slate-500">Quantity</span>
+                    <span className="font-bold text-slate-800">{viewItemDetail.qty} <span className="text-xs text-slate-500 ml-1">{viewItemDetail.unit}</span></span>
+                  </div>
+                  <div className="flex justify-between items-center border-b border-slate-50 pb-3">
+                    <span className="text-sm font-semibold text-slate-500">Unit Price</span>
+                    <span className="font-bold text-slate-800 font-[Sora]">{formatRp(viewItemDetail.unitPrice)}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-semibold text-slate-500">Total Planned</span>
+                    <span className="font-bold text-slate-900 font-[Sora] text-[1.05rem]">{formatRp(viewItemDetail.totalAmount)}</span>
+                  </div>
+                </div>
+
+                <div className="bg-orange-50/50 p-4 rounded-2xl border border-orange-100/50 shadow-sm">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-semibold text-orange-900/60">Used Amount</span>
+                    <span className="font-bold text-orange-600 font-[Sora] text-[1.05rem]">{formatRp(viewItemDetail.usedAmount)}</span>
+                  </div>
+                  {viewItemDetail.totalAmount > 0 && (
+                    <div className="mt-3 bg-orange-100/50 rounded-full h-1.5 overflow-hidden">
+                      <div 
+                        className="bg-orange-500 h-full rounded-full" 
+                        style={{ width: `${Math.min(100, (viewItemDetail.usedAmount / viewItemDetail.totalAmount) * 100)}%` }}
+                      />
+                    </div>
+                  )}
+                </div>
+
+                <div className="space-y-4">
+                  <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
+                    <div className="text-[0.7rem] font-bold tracking-widest uppercase text-slate-400 mb-1">Target Output</div>
+                    <div className="text-sm font-medium text-slate-700 leading-relaxed">{viewItemDetail.targetOutput || "-"}</div>
+                  </div>
+
+
+
+                  <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
+                    <div className="text-[0.7rem] font-bold tracking-widest uppercase text-slate-400 mb-1">Person in Charge</div>
+                    <div className="flex items-center gap-2 mt-1.5">
+                      <div className="w-6 h-6 rounded-md bg-slate-100 text-slate-600 flex items-center justify-center text-[0.65rem] font-bold">
+                        {viewItemDetail.pic.substring(0, 2).toUpperCase()}
+                      </div>
+                      <span className="text-sm font-semibold text-slate-700">{viewItemDetail.pic}</span>
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        </DrawerContent>
+      </Drawer>
     </div>
   );
 }
