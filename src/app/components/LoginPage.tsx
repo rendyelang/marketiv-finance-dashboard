@@ -127,9 +127,16 @@ export function LoginPage() {
               </div>
 
               <div className="flex items-center justify-between pb-2">
-                <a href="#" className="text-sm font-bold text-[#ea580c] hover:text-[#c2410c] transition-colors">
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    toast.info("Feature under construction");
+                  }}
+                  className="text-sm font-bold text-[#ea580c] hover:text-[#c2410c] transition-colors cursor-pointer"
+                >
                   Forgot Password?
-                </a>
+                </button>
               </div>
 
               <button
