@@ -106,15 +106,7 @@ function LogItem({ log }: { log: AuditLogItem }) {
           transition: "0.2s ease-in-out",
         }}
       >
-        <div
-          style={{
-            display: "flex",
-            alignItems: "flex-start",
-            justifyContent: "space-between",
-            gap: "12px",
-            marginBottom: "8px",
-          }}
-        >
+        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 sm:gap-[12px] mb-2">
           <div>
             <div
               style={{
@@ -128,7 +120,7 @@ function LogItem({ log }: { log: AuditLogItem }) {
             >
               {meta.label}
             </div>
-            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            <div className="flex flex-wrap items-center gap-2">
               <div
                 style={{
                   fontSize: "0.82rem",

@@ -596,15 +596,7 @@ export function SummaryTab({ rabCategories, totalBudget, totalRealization, isLoa
           boxShadow: "0 18px 46px rgba(15,23,42,0.10)",
         }}
       >
-        <div
-          style={{
-            display: "flex",
-            alignItems: "flex-start",
-            justifyContent: "space-between",
-            gap: "16px",
-            marginBottom: "28px",
-          }}
-        >
+        <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 mb-7">
           <div>
             <div
               style={{
@@ -753,12 +745,8 @@ export function SummaryTab({ rabCategories, totalBudget, totalRealization, isLoa
 
       {/* Grand Total strip */}
       <div
+        className="grid grid-cols-2 lg:grid-cols-4 gap-y-6 lg:gap-[1px] p-5 lg:py-[22px] lg:px-[28px] rounded-[24px]"
         style={{
-          display: "grid",
-          gridTemplateColumns: "1fr 1fr 1fr 1fr",
-          gap: "1px",
-          padding: "22px 28px",
-          borderRadius: "24px",
           background:
             "radial-gradient(circle at 0% 50%, rgba(249,115,22,0.08), transparent 14rem), linear-gradient(135deg, #0c172b 0%, #12213a 100%)",
           border: "1px solid rgba(255,255,255,0.06)",
@@ -793,10 +781,7 @@ export function SummaryTab({ rabCategories, totalBudget, totalRealization, isLoa
         ].map((item, i) => (
           <div
             key={i}
-            style={{
-              padding: i > 0 ? "0 24px" : "0 24px 0 0",
-              borderLeft: i > 0 ? "1px solid rgba(255,255,255,0.08)" : "none",
-            }}
+            className={`px-2 lg:px-6 ${(i === 1 || i === 3) ? 'border-l border-white/10' : ''} ${i === 2 ? 'lg:border-l lg:border-white/10' : ''}`}
           >
             <div
               style={{
