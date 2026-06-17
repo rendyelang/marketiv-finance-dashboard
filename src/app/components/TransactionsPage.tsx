@@ -93,7 +93,7 @@ function TransactionRow({
       {/* Type dot */}
       <TypeDot type={txn.type} />
 
-      {/* Date + ID */}
+      {/* Date + Time */}
       <div>
         <div
           style={{
@@ -115,7 +115,7 @@ function TransactionRow({
             letterSpacing: "0.03em",
           }}
         >
-          {txn.id}
+          {txn.time}
         </div>
       </div>
 

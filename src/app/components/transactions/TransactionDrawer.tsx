@@ -657,6 +657,7 @@ export function TransactionDrawer({ transaction, onClose, onAttachmentDeleted, o
                   icon: Calendar,
                   label: "Date",
                   value: formatDate(transaction.date),
+                  subValue: transaction.time,
                   mono: false,
                 },
                 {
@@ -741,15 +742,29 @@ export function TransactionDrawer({ transaction, onClose, onAttachmentDeleted, o
                         {field.value}
                       </span>
                     ) : (
-                      <div
-                        style={{
-                          fontSize: "0.86rem",
-                          fontWeight: 700,
-                          color: "#182033",
-                          letterSpacing: "-0.018em",
-                        }}
-                      >
-                        {field.value}
+                      <div>
+                        <div
+                          style={{
+                            fontSize: "0.86rem",
+                            fontWeight: 700,
+                            color: "#182033",
+                            letterSpacing: "-0.018em",
+                          }}
+                        >
+                          {field.value}
+                        </div>
+                        {field.subValue && (
+                          <div
+                            style={{
+                              fontSize: "0.75rem",
+                              color: "#737f91",
+                              fontWeight: 600,
+                              marginTop: "2px",
+                            }}
+                          >
+                            {field.subValue}
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>

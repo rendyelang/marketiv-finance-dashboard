@@ -22,6 +22,7 @@ export interface HistoryItem {
 export interface Transaction {
   id: string;
   date: string;
+  time: string;
   type: TransactionType;
   description: string;
   category: string;
@@ -92,6 +93,7 @@ export function mapDBTransactionToFrontend(dbTx: TransactionWithRelations): Tran
   return {
     id: dbTx.id,
     date: dbTx.date,
+    time: new Date(dbTx.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
     type: (dbTx.type as TransactionType) || "Expense",
     description: dbTx.description,
     category: dbTx.budget_items?.budget_activities?.budget_categories?.name || "—",
