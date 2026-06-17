@@ -53,7 +53,7 @@ serve(async (req) => {
     }
 
     // Parse request body
-    const { email, full_name, position, role } = await req.json();
+    const { email, full_name, position, role, redirectTo } = await req.json();
 
     if (!email || !full_name || !role) {
       throw new Error('Missing required fields');
@@ -62,6 +62,7 @@ serve(async (req) => {
     // 1. Invite the user via Supabase Auth
     const { data: inviteData, error: inviteError } = await supabaseAdmin.auth.admin.inviteUserByEmail(email, {
       data: { full_name, position, role },
+      redirectTo: redirectTo,
     });
 
     if (inviteError) {

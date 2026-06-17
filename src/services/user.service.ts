@@ -48,7 +48,10 @@ export async function inviteUser(userData: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify(userData),
+      body: JSON.stringify({
+        ...userData,
+        redirectTo: import.meta.env.VITE_APP_URL || window.location.origin
+      }),
     });
 
     const text = await response.text();
