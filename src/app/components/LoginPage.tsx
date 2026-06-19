@@ -28,7 +28,7 @@ export function LoginPage() {
   const onSubmit = async (data: any) => {
     setIsLoading(true);
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data: sessionData, error } = await supabase.auth.signInWithPassword({
         email: data.email,
         password: data.password,
       });

@@ -51,11 +51,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     loadSession();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
         await loadProfile(session.user.id);
+        
+        // Update last active timestamp
+        if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+          try {
+            await supabase
+              .from('users')
+              .update({ last_active_at: new Date().toISOString() })
+              .eq('auth_user_id', session.user.id);
+          } catch (err) {
+            console.error("Failed to update last active timestamp", err);
+          }
+        }
       } else {
         setProfile(null);
       }

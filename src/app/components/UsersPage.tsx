@@ -70,7 +70,7 @@ function UserRow({ user, onSelect }: { user: UserProfile; onSelect: (u: UserProf
       onClick={() => onSelect(user)}
       style={{
         display: "grid",
-        gridTemplateColumns: "38px 1fr 130px 120px 90px 80px",
+        gridTemplateColumns: "38px 1fr 150px 120px 110px 120px 80px",
         gap: "14px",
         alignItems: "center",
         padding: "14px 20px",
@@ -113,6 +113,20 @@ function UserRow({ user, onSelect }: { user: UserProfile; onSelect: (u: UserProf
         >
           {user.email}
         </div>
+      </div>
+
+      {/* Position */}
+      <div
+        style={{
+          fontSize: "0.82rem",
+          fontWeight: 600,
+          color: "#556174",
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          whiteSpace: "nowrap",
+        }}
+      >
+        {user.position || "—"}
       </div>
 
       {/* Role */}
@@ -616,30 +630,13 @@ export function UsersPage({ onMenuClick }: UsersPageProps) {
     >
       <TopNav title="User Management" subtitle="Roles, Access & Team Members" onMenuClick={onMenuClick} />
 
-      <main
-        style={{
-          flex: 1,
-          padding: "28px 32px 48px",
-          display: "flex",
-          flexDirection: "column",
-          gap: "24px",
-        }}
-      >
+      <main className="flex-1 flex flex-col gap-4 md:gap-6 p-4 md:p-[28px_32px_48px]">
         {/* Hero Section */}
         <div
+          className="relative overflow-hidden flex flex-wrap items-center justify-between gap-6 rounded-2xl md:rounded-[32px] p-5 md:p-[32px_34px] shadow-[0_22px_60px_rgba(12,23,43,0.28)]"
           style={{
-            borderRadius: "32px",
-            padding: "32px 34px",
             background:
               "radial-gradient(circle at 88% 0%, rgba(249,115,22,0.16), transparent 22rem), radial-gradient(circle at 6% 120%, rgba(37,99,235,0.10), transparent 20rem), linear-gradient(135deg, #0c172b, #15233d)",
-            boxShadow: "0 22px 60px rgba(12,23,43,0.28)",
-            position: "relative",
-            overflow: "hidden",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            gap: "24px",
-            flexWrap: "wrap",
           }}
         >
           <div style={{ position: "relative", zIndex: 1, minWidth: 0 }}>
@@ -953,55 +950,20 @@ export function UsersPage({ onMenuClick }: UsersPageProps) {
             </button>
           </div>
 
-          <div
-            style={{
-              padding: "14px 20px",
-              borderBottom: "1px solid rgba(17,24,39,0.06)",
-              background: "#fafbfc",
-              display: "flex",
-              alignItems: "center",
-              gap: "10px",
-              flexWrap: "wrap",
-            }}
-          >
+          <div className="flex flex-col lg:flex-row lg:items-center gap-3 lg:gap-[10px] p-4 md:p-[14px_20px] bg-[#fafbfc] border-b border-gray-900/5">
             <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "9px",
-                flex: 1,
-                minWidth: "200px",
-                maxWidth: "300px",
-                height: "38px",
-                padding: "0 13px",
-                borderRadius: "11px",
-                background: "white",
-                border: "1px solid rgba(17,24,39,0.09)",
-                boxShadow: "0 2px 8px rgba(15,23,42,0.04)",
-              }}
+              className="flex items-center gap-[9px] w-full lg:flex-1 lg:max-w-[300px] h-[38px] px-[13px] rounded-[11px] bg-white border border-gray-900/10 shadow-[0_2px_8px_rgba(15,23,42,0.04)]"
             >
-              <Search size={14} style={{ color: "#737f91", flexShrink: 0 }} />
+              <Search size={14} className="text-[#737f91] shrink-0" />
               <input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search by name, email, position..."
-                style={{
-                  background: "none",
-                  border: "none",
-                  outline: "none",
-                  color: "#182033",
-                  fontSize: "0.82rem",
-                  width: "100%",
-                  padding: 0,
-                  height: "auto",
-                  minHeight: "auto",
-                  boxShadow: "none",
-                  borderRadius: 0,
-                }}
+                className="bg-transparent border-none outline-none text-[#182033] text-[0.82rem] w-full p-0 h-auto min-h-auto shadow-none rounded-none"
               />
             </div>
 
-            <div style={{ display: "flex", gap: "5px" }}>
+            <div className="flex gap-[5px] overflow-x-auto hide-scrollbar pb-1 lg:pb-0">
               {(["All", "ADMIN", "MEMBER"] as const).map((r) => (
                 <button
                   key={r}
@@ -1021,13 +983,14 @@ export function UsersPage({ onMenuClick }: UsersPageProps) {
                     cursor: "pointer",
                     transition: "0.16s",
                   }}
+                  className="shrink-0 whitespace-nowrap"
                 >
                   {r === "ADMIN" ? "Admin" : r === "MEMBER" ? "Member" : "All"}
                 </button>
               ))}
             </div>
 
-            <div style={{ position: "relative", marginLeft: "auto" }}>
+            <div className="relative w-full lg:w-auto lg:ml-auto">
               <select
                 value={filterStatus}
                 onChange={(e) => setFilterStatus(e.target.value as UserStatus | "All")}
@@ -1046,6 +1009,7 @@ export function UsersPage({ onMenuClick }: UsersPageProps) {
                   boxShadow: "0 2px 8px rgba(15,23,42,0.04)",
                   minHeight: "auto",
                 }}
+                className="w-full lg:w-auto"
               >
                 {["All", "ACTIVE", "INVITED", "INACTIVE"].map((s) => (
                   <option key={s} value={s}>
@@ -1055,31 +1019,24 @@ export function UsersPage({ onMenuClick }: UsersPageProps) {
               </select>
               <ChevronDown
                 size={12}
-                style={{
-                  position: "absolute",
-                  right: "10px",
-                  top: "50%",
-                  transform: "translateY(-50%)",
-                  color: "#737f91",
-                  pointerEvents: "none",
-                }}
+                className="absolute right-[10px] top-1/2 -translate-y-1/2 text-[#737f91] pointer-events-none"
               />
             </div>
           </div>
 
           <div className="overflow-x-auto w-full pb-2">
-            <div className="min-w-[800px]">
+            <div className="min-w-[1050px]">
               <div
                 style={{
                   display: "grid",
-                  gridTemplateColumns: "38px 1fr 130px 120px 90px 80px",
+                  gridTemplateColumns: "38px 1fr 150px 120px 110px 120px 80px",
                   gap: "14px",
                   padding: "10px 20px",
                   background: "#f8fafc",
                   borderBottom: "1px solid rgba(17,24,39,0.06)",
                 }}
               >
-                {["", "Member", "Role", "Status", "Last Active", ""].map((h, i) => (
+                {["", "Member", "Position", "Role", "Status", "Last Active", ""].map((h, i) => (
                   <div
                     key={i}
                     style={{

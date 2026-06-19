@@ -106,7 +106,13 @@ export function getInitials(name: string): string {
 export function formatUserDate(dateStr: string | null): string {
   if (!dateStr || dateStr === "—") return "—";
   const d = new Date(dateStr);
-  return d.toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" });
+  return d.toLocaleString("id-ID", { 
+    day: "numeric", 
+    month: "short", 
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit"
+  }).replace(/\./g, ":"); // Use colon instead of dot for time format
 }
 
 export function getActiveCount(usersList: UserProfile[]): number {
